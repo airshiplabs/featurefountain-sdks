@@ -33,6 +33,6 @@ test("clean_checkout_builds_secret_free_public_package", async () => {
   expect(built.contents).not.toMatch(
     /private_database_canary|private_github_secret_canary|private_challenge_secret_canary/,
   );
-  expect(built.manifest.name).toBe("@airshiplabs/featurefountain-widget");
+  expect(built.manifest.name).toBe("@featurefountain/browser");
   expect(built.manifest.license).toBe("MIT");
 });
