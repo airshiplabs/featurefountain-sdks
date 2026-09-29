@@ -1,6 +1,8 @@
-# FeatureFountain widget
+# FeatureFountain SDKs
 
-A browser custom element that opens FeatureFountain's hosted feature request form. Configure a public project ID and service origin. The widget contains no GitHub credentials or private destination details.
+SDKs for embedding FeatureFountain in host applications. This repository currently contains the `@airshiplabs/featurefountain-widget` browser package; SDKs for other platforms will live here as they are added.
+
+The browser custom element opens FeatureFountain's hosted feature request form. Configure a public project ID and service origin. The widget contains no GitHub credentials or private destination details.
 
 ## Build from source
 
@@ -33,7 +35,7 @@ Copy `dist/widget.js` to your site's public files, then add:
 
 Replace the project ID with the ID from your FeatureFountain dashboard. Configure a private destination, allow your site's exact origin, and enable submissions there.
 
-For an application that imports JavaScript modules, copy and import `dist/index.js` instead. You can also install a built source checkout with `pnpm add /absolute/path/to/featurefountain-widget`, then import the package:
+For an application that imports JavaScript modules, copy and import `dist/index.js` instead. You can also install a built source checkout with `pnpm add /absolute/path/to/featurefountain-sdks`, then import the package:
 
 ```js
 import "@airshiplabs/featurefountain-widget";
