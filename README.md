@@ -17,6 +17,8 @@ pnpm test:e2e
 
 The build produces `dist/index.js` and `dist/index.d.ts` for module imports, plus the standalone browser script `dist/widget.js`. It needs no environment file, service credentials, or application repository.
 
+GitHub Actions runs typecheck, build, package tests, browser tests, and packing on pull requests and pushes to `main`. The workflow uses Node 22, pnpm 11.24.0, and a frozen lockfile. Its browser fixtures need no database or provider secrets. Failed runs retain browser traces for seven days.
+
 ## Add the button
 
 Copy `dist/widget.js` to your site's public files, then add:
@@ -38,6 +40,8 @@ import "@airshiplabs/featurefountain-widget";
 ```
 
 Importing the module registers `<feature-fountain>`. Repeated script or module loads preserve the existing registration. Set attributes before attaching the element to the page.
+
+Import the module only in a browser: it requires `HTMLElement` and `customElements`. In a server-rendered application, load it after client mount or through a component with server rendering disabled.
 
 | Attribute    | Value                                                                                                                                                                                                           |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
