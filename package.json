@@ -1,5 +1,5 @@
 {
-  "name": "@airshiplabs/featurefountain",
+  "name": "@featurefountain/browser",
   "version": "0.1.0",
   "description": "Public browser component for FeatureFountain",
   "type": "module",
