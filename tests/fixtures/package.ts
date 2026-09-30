@@ -60,7 +60,6 @@ export async function buildCleanCheckout(
       env: { ...process.env, ...secrets, CI: "1", TZ: "UTC" },
     };
     await exec("pnpm", ["install", "--offline", "--frozen-lockfile"], options);
-    await exec("pnpm", ["build"], options);
     await exec("pnpm", ["pack", "--pack-destination", artifacts], options);
     const archives = (await readdir(artifacts)).filter((name) =>
       name.endsWith(".tgz"),

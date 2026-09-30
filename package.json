@@ -1,9 +1,21 @@
 {
-  "name": "@featurefountain/browser",
+  "name": "@airshiplabs/featurefountain",
   "version": "0.1.0",
   "description": "Public browser component for FeatureFountain",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://featurefountain.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/airshiplabs/featurefountain-sdks.git"
+  },
+  "bugs": {
+    "url": "https://github.com/airshiplabs/featurefountain-sdks/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,6 +36,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "prepack": "npm run build",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit"

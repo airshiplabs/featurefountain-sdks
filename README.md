@@ -1,6 +1,6 @@
 # FeatureFountain SDKs
 
-SDKs for embedding FeatureFountain in host applications. This repository currently contains the `@featurefountain/browser` browser package; SDKs for other platforms will live here as they are added.
+SDKs for embedding FeatureFountain in host applications. This repository currently contains the `@airshiplabs/featurefountain` browser package; SDKs for other platforms will live here as they are added.
 
 The browser custom element opens FeatureFountain's hosted feature request form. Configure a public project ID and service origin. The widget contains no GitHub credentials or private destination details.
 
@@ -35,10 +35,16 @@ Copy `dist/widget.js` to your site's public files, then add:
 
 Replace the project ID with the ID from your FeatureFountain dashboard. Configure a private destination, allow your site's exact origin, and enable submissions there.
 
-For an application that imports JavaScript modules, copy and import `dist/index.js` instead. You can also install a built source checkout with `pnpm add /absolute/path/to/featurefountain-sdks`, then import the package:
+For an application that imports JavaScript modules, install the package:
+
+```sh
+npm install @airshiplabs/featurefountain
+```
+
+Then import it in your browser entry point:
 
 ```js
-import "@featurefountain/browser";
+import "@airshiplabs/featurefountain";
 ```
 
 Importing the module registers `<feature-fountain>`. Repeated script or module loads preserve the existing registration. Set attributes before attaching the element to the page.
@@ -74,4 +80,18 @@ The hosted form owns submission results. A successful result means the service c
 
 ## Package contents
 
-`pnpm pack` includes only the compiled `dist` files, this README, the MIT license, and package metadata. Tests check a fresh checkout and inspect its archive for private configuration. Registry publication is optional.
+`pnpm pack` rebuilds the package and includes only the compiled `dist` files, this README, the MIT license, and package metadata. Tests check a fresh checkout and inspect its archive for private configuration. The package is published publicly to npm under the Airship Labs scope.
+
+## Release
+
+Airship Labs owns `@airshiplabs/featurefountain`. Publish from a reviewed commit with a new, unused version in `package.json`, using an npm account with permission to publish in the `@airshiplabs` scope. Install dependencies first, then run:
+
+```sh
+pnpm typecheck
+pnpm test
+pnpm test:e2e
+npm pack --dry-run
+npm publish --access public
+```
+
+Packing and publishing rebuild the distribution through `prepack`. Inspect the archive contents before publishing; it should contain only the six public files described above. Never include service environment files or credentials.
