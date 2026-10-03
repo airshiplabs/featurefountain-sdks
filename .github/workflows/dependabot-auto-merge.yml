@@ -17,8 +17,8 @@ jobs:
     timeout-minutes: 5
     if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]' && github.repository == 'airshiplabs/featurefountain-sdks'
     permissions:
-      contents: write # only exercised by `gh pr merge --auto`, which runs only when the repo variable TIER1_AUTO_MERGE == 'true' (currently unset)
-      pull-requests: write # `gh pr edit --add-label` (tier:1 / tier:2) and `gh pr merge --auto`
+      contents: write # only exercised by `gh pr merge --auto`, which runs only when the repo variable TIER1_AUTO_MERGE == 'true' (currently unset); `--disable-auto` only has something to undo after that
+      pull-requests: write # tier:1 / tier:2 labels via the REST issues labels API (pull-requests: write covers it on PRs), `gh pr merge --auto` and `--disable-auto`
       vulnerability-alerts: read # lets fetch-metadata look up Dependabot alerts (alert-lookup) so security updates stay out of Tier 1
 
     steps:
@@ -100,7 +100,7 @@ jobs:
           && !contains(steps.metadata.outputs.dependency-names, '@fontsource')
           && !contains(steps.metadata.outputs.dependency-names, '@expo-google-fonts/')
         run: |
-          gh pr edit "$PR_URL" --add-label "tier:1"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels" -f 'labels[]=tier:1'
           # Never post the required "QA checks" status from a workflow (brain decision 0005); it is posted by bostonaholic/Airship QA App only.
           # Off unless the repo variable TIER1_AUTO_MERGE is 'true' (decision 0005). Checked here, not in the step's if:,
           # so eligible PRs still get tier:1 and this step still succeeds (no tier:2 fallback).
@@ -111,13 +111,28 @@ jobs:
           fi
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
+          PR_NUMBER: ${{github.event.pull_request.number}}
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
           TIER1_AUTO_MERGE: ${{vars.TIER1_AUTO_MERGE}}
 
       # Anything that didn't qualify, or whose Tier 1 step failed (including a failed metadata lookup), needs human review.
+      # Runs whatever TIER1_AUTO_MERGE is set to, so a later non-qualifying push always disarms an auto-merge armed by an earlier qualifying run.
       - name: Label tier:2 (human review)
         if: ${{ !cancelled() && steps.tier1.conclusion != 'success' }}
-        run: gh pr edit "$PR_URL" --add-label "tier:2"
+        run: |
+          # Failure is tolerated for this command only: it fails when auto-merge was never enabled on the PR.
+          if ! gh pr merge --disable-auto "$PR_URL"; then
+            echo "::notice::gh pr merge --disable-auto failed; auto-merge was most likely never enabled on this PR."
+          fi
+          # Drop a stale tier:1 from an earlier qualifying run; a 404 means it wasn't set.
+          if ! out=$(gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels/tier:1" 2>&1); then
+            case "$out" in
+              *"HTTP 404"*) echo "::notice::tier:1 was not set on this PR." ;;
+              *) echo "$out" >&2; exit 1 ;;
+            esac
+          fi
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels" -f 'labels[]=tier:2'
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
+          PR_NUMBER: ${{github.event.pull_request.number}}
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
