@@ -25,8 +25,8 @@ jobs:
 
       # Tier 1 only when every dependency in the PR qualifies, so one excluded package keeps a grouped update out:
       #   - patch or minor: update-type is the highest change in the PR, so any major makes it major (decision 0003 rule 6).
-      #   - devDependencies only (studio standard section 9): dependency-type is the highest type in the PR, so any
-      #     production dependency makes it direct:production. Transitive (indirect) updates are excluded too.
+      #   - devDependencies only (studio standard section 9): dependency-type must be direct:development, and no
+      #     dependency in updated-dependencies-json may be direct:production or indirect (transitive).
       #   - not a security update: no Dependabot alert (GHSA ID) on any dependency (decision 0003 rule 10).
       #   - nothing from the decision 0003 rule 6 list below (exact names, or name prefixes):
       #   Framework families (next, react):
@@ -47,6 +47,7 @@ jobs:
         if: >-
           (steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor')
           && steps.metadata.outputs.dependency-type == 'direct:development'
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyType, 'direct:production')
           && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyType, 'indirect')
           && join(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.ghsaId, '') == ''
           && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'next')
@@ -99,9 +100,9 @@ jobs:
           PR_URL: ${{github.event.pull_request.html_url}}
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
-      # Anything that didn't qualify (including a failed metadata lookup) needs human review.
+      # Anything that didn't qualify, or whose Tier 1 step failed (including a failed metadata lookup), needs human review.
       - name: Label tier:2 (human review)
-        if: ${{ !cancelled() && steps.tier1.conclusion == 'skipped' }}
+        if: ${{ !cancelled() && steps.tier1.conclusion != 'success' }}
         run: gh pr edit "$PR_URL" --add-label "tier:2"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
