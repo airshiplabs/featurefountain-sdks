@@ -95,6 +95,7 @@ jobs:
           && !contains(steps.metadata.outputs.dependency-names, '@expo-google-fonts/')
         run: |
           gh pr edit "$PR_URL" --add-label "tier:1"
+          # Never post the required "QA checks" status from a workflow (brain decision 0005); it is posted by bostonaholic/Airship QA App only.
           gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
