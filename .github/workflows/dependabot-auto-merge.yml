@@ -1,0 +1,108 @@
+# Tier 1 of the PR review policy (brain decision 0003): Dependabot patch and minor updates to
+# devDependencies (studio standard section 9) auto-merge once required checks pass.
+# Everything else is labelled tier:2 for human review.
+# Based on GitHub's "Automating Dependabot with GitHub Actions" docs (Enable auto-merge on a pull request).
+name: Dependabot auto-merge
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+  # Lets fetch-metadata look up Dependabot alerts (alert-lookup) so security updates stay out of Tier 1.
+  vulnerability-alerts: read
+
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]' && github.repository == 'airshiplabs/featurefountain-sdks'
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          alert-lookup: true
+
+      # Tier 1 only when every dependency in the PR qualifies, so one excluded package keeps a grouped update out:
+      #   - patch or minor: update-type is the highest change in the PR, so any major makes it major (decision 0003 rule 6).
+      #   - devDependencies only (studio standard section 9): dependency-type is the highest type in the PR, so any
+      #     production dependency makes it direct:production. Transitive (indirect) updates are excluded too.
+      #   - not a security update: no Dependabot alert (GHSA ID) on any dependency (decision 0003 rule 10).
+      #   - nothing from the decision 0003 rule 6 list below (exact names, or name prefixes):
+      #   Framework families (next, react):
+      #     exact: next, eslint-config-next, react, react-dom, @types/react, @types/react-dom
+      #     prefix: @next/
+      #   Auth, payment, crypto and session libraries:
+      #     exact: better-auth, next-auth, clerk, lucia, arctic, jose, jsonwebtoken, iron-session, express-session, bcrypt, bcryptjs, argon2, crypto-js, tweetnacl, stripe
+      #     prefix: @clerk/, @better-auth/, @auth/, @simplewebauthn/, @oslojs/, @noble/, @node-rs/argon2, @node-rs/bcrypt, @stripe/
+      #   Expo-native packages:
+      #     exact: expo, react-native
+      #     prefix: expo-, @expo/, react-native
+      #   Brand-hash inputs (brand standard v1.2: renderer, image transforms, font files):
+      #     exact: satori, @vercel/og, sharp, geist
+      #     prefix: @resvg/, @fontsource, @expo-google-fonts/
+      #   This repo: none today. The base list stays so future additions are covered.
+      - name: Label tier:1 and enable auto-merge (squash)
+        id: tier1
+        if: >-
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor')
+          && steps.metadata.outputs.dependency-type == 'direct:development'
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyType, 'indirect')
+          && join(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.ghsaId, '') == ''
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'next')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'eslint-config-next')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'react')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'react-dom')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, '@types/react')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, '@types/react-dom')
+          && !contains(steps.metadata.outputs.dependency-names, '@next/')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'better-auth')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'next-auth')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'clerk')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'lucia')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'arctic')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'jose')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'jsonwebtoken')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'iron-session')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'express-session')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'bcrypt')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'bcryptjs')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'argon2')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'crypto-js')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'tweetnacl')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'stripe')
+          && !contains(steps.metadata.outputs.dependency-names, '@clerk/')
+          && !contains(steps.metadata.outputs.dependency-names, '@better-auth/')
+          && !contains(steps.metadata.outputs.dependency-names, '@auth/')
+          && !contains(steps.metadata.outputs.dependency-names, '@simplewebauthn/')
+          && !contains(steps.metadata.outputs.dependency-names, '@oslojs/')
+          && !contains(steps.metadata.outputs.dependency-names, '@noble/')
+          && !contains(steps.metadata.outputs.dependency-names, '@node-rs/argon2')
+          && !contains(steps.metadata.outputs.dependency-names, '@node-rs/bcrypt')
+          && !contains(steps.metadata.outputs.dependency-names, '@stripe/')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'expo')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'react-native')
+          && !contains(steps.metadata.outputs.dependency-names, 'expo-')
+          && !contains(steps.metadata.outputs.dependency-names, '@expo/')
+          && !contains(steps.metadata.outputs.dependency-names, 'react-native')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'satori')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, '@vercel/og')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'sharp')
+          && !contains(fromJSON(steps.metadata.outputs.updated-dependencies-json).*.dependencyName, 'geist')
+          && !contains(steps.metadata.outputs.dependency-names, '@resvg/')
+          && !contains(steps.metadata.outputs.dependency-names, '@fontsource')
+          && !contains(steps.metadata.outputs.dependency-names, '@expo-google-fonts/')
+        run: |
+          gh pr edit "$PR_URL" --add-label "tier:1"
+          gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      # Anything that didn't qualify (including a failed metadata lookup) needs human review.
+      - name: Label tier:2 (human review)
+        if: ${{ !cancelled() && steps.tier1.conclusion == 'skipped' }}
+        run: gh pr edit "$PR_URL" --add-label "tier:2"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
