@@ -1,19 +1,44 @@
 version: 2
 updates:
-  - package-ecosystem: npm
-    directory: /
-    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Denver }
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Denver"
     open-pull-requests-limit: 5
     # Version updates only; security updates are never delayed by cooldown.
-    cooldown: { default-days: 3, semver-major-days: 14 }
-    groups:
-      tooling:     { patterns: ["oxlint", "oxlint-tsgolint", "oxfmt", "typescript", "vitest", "@vitest/*", "@playwright/test"] }
-      minor-patch: { update-types: ["minor", "patch"] }
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
     ignore:
+      # Moves with the Node runtime (studio standard §1).
       - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]   # moves with the runtime (studio standard §1)
+        update-types: ["version-update:semver-major"]
+    groups:
+      tooling:
+        patterns:
+          - "oxlint"
+          - "oxlint-tsgolint"
+          - "oxfmt"
+          - "typescript"
+          - "vitest"
+          - "@vitest/*"
+          - "@playwright/test"
+      minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
 
-  - package-ecosystem: github-actions
-    directory: /
-    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Denver }
-    groups: { actions: { patterns: ["*"] } }
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Denver"
+    groups:
+      actions:
+        patterns:
+          - "*"
