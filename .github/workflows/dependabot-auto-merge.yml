@@ -5,16 +5,22 @@
 name: Dependabot auto-merge
 on: pull_request
 
-permissions:
-  contents: write
-  pull-requests: write
-  # Lets fetch-metadata look up Dependabot alerts (alert-lookup) so security updates stay out of Tier 1.
-  vulnerability-alerts: read
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   dependabot:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]' && github.repository == 'airshiplabs/featurefountain-sdks'
+    permissions:
+      contents: write # only exercised by `gh pr merge --auto`, which runs only when the repo variable TIER1_AUTO_MERGE == 'true' (currently unset)
+      pull-requests: write # `gh pr edit --add-label` (tier:1 / tier:2) and `gh pr merge --auto`
+      vulnerability-alerts: read # lets fetch-metadata look up Dependabot alerts (alert-lookup) so security updates stay out of Tier 1
+
     steps:
       - name: Dependabot metadata
         id: metadata
@@ -101,7 +107,7 @@ jobs:
           if [ "$TIER1_AUTO_MERGE" = "true" ]; then
             gh pr merge --auto --squash "$PR_URL"
           else
-            echo "::notice::Tier 1 auto-merge is off until the Airship QA App exists (decision 0005); Tessa/Archie post QA checks and an agent merges."
+            echo "::notice::Tier 1 auto-merge is off until the Airship QA App exists (decision 0005); the QA checks status is posted as bostonaholic (by Tessa or Archie) after QA, never by a workflow, and an agent merges."
           fi
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
