@@ -1,18 +1,22 @@
-# Posts `QA checks` = success on a PR's head SHA only when every changed file is
-# docs, per brain decision 0005 (amended 2026-10-03, approved by Matthew).
-# Posts nothing otherwise, so normal QA (Tessa) applies.
+# Posts `QA checks` = success on a PR's head SHA only when the PR targets the
+# default branch and every changed file is docs, per brain decision 0005
+# (amended 2026-10-03, approved by Matthew). Otherwise normal QA (Tessa) applies.
 #
 # Security design:
 # - pull_request_target runs the BASE branch's copy of this file, so a PR can't
 #   edit this workflow to forge a pass.
-# - Never checks out or runs PR code. It only reads the PR's file list via the API.
+# - Never checks out or runs PR code. It only reads the PR via the API.
 # - Minimal token: statuses: write, pull-requests: read.
+# - Statuses are per SHA, not per PR or base. So the job also runs on `edited`
+#   (fired on a base change), only exempts PRs whose base is the default branch,
+#   and when a PR isn't exempt it revokes its OWN earlier pass on the head SHA
+#   (sets `pending`). It never overwrites a status anyone else posted.
 # - Do not name a job "QA checks" (decision 0005).
 name: docs-only-qa
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
 
 permissions:
   statuses: write
@@ -25,18 +29,22 @@ concurrency:
 jobs:
   docs-only-qa:
     name: docs-only-qa
-    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Post QA checks success if every changed file is docs
+      - name: Post or revoke the docs-only QA checks exemption
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
           EVENT_SHA: ${{ github.event.pull_request.head.sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
+
+          DOCS_DESC="Docs-only change: QA exempt (brain decision 0005)"
+          REVOKE_DESC="Not docs-only against current base: normal QA required"
+          RUN_URL="${GITHUB_SERVER_URL:-https://github.com}/$REPO/actions/runs/${GITHUB_RUN_ID:-0}"
 
           # Docs patterns (keep identical across repos). A path is docs only if:
           # - no path segment starts with "." (.github/, .cursor/, .agents/, .claude/, ...)
@@ -55,36 +63,67 @@ jobs:
                 and (($p | startswith("docs/")) or ($p | test("\\.md$"; "i")));
           '
 
-          head=$(gh api "repos/$REPO/pulls/$PR" --jq .head.sha)
-          expected=$(gh api "repos/$REPO/pulls/$PR" --jq .changed_files)
+          # Not exempt: if the latest `QA checks` on the head SHA is this
+          # workflow's own docs-only pass, replace it with `pending`. Never touch
+          # a status anyone else posted (Tessa posts as bostonaholic).
+          revoke() {
+            echo "Not exempt: $1"
+            latest=$(gh api --paginate "repos/$REPO/commits/$EVENT_SHA/statuses?per_page=100" \
+              --jq '.[] | select(.context == "QA checks") | [.creator.login // "", .description // ""] | @tsv')
+            latest=${latest%%$'\n'*} # newest first: first line is the latest
+            if [ "$latest" = "github-actions[bot]"$'\t'"$DOCS_DESC" ]; then
+              gh api -X POST "repos/$REPO/statuses/$EVENT_SHA" \
+                -f state=pending \
+                -f context="QA checks" \
+                -f description="$REVOKE_DESC" \
+                -f target_url="$RUN_URL" \
+                --silent
+              echo "Revoked this workflow's earlier pass on $EVENT_SHA (now pending)."
+            else
+              echo "Latest QA checks on $EVENT_SHA isn't our docs-only pass. Posting nothing."
+            fi
+            exit 0
+          }
+
+          pr_json=$(gh api "repos/$REPO/pulls/$PR")
+          head=$(jq -r .head.sha <<<"$pr_json")
           if [ "$head" != "$EVENT_SHA" ]; then
             echo "Head moved to $head; the newer run decides. Posting nothing."
             exit 0
           fi
+          base=$(jq -r .base.ref <<<"$pr_json")
+          draft=$(jq -r .draft <<<"$pr_json")
+          expected=$(jq -r .changed_files <<<"$pr_json")
+
+          [ "$draft" = "false" ] || revoke "draft PR"
+          [ -n "$DEFAULT_BRANCH" ] && [ "$base" = "$DEFAULT_BRANCH" ] \
+            || revoke "base is '$base', not the default branch '$DEFAULT_BRANCH'"
 
           # One line per file: "docs" if the filename (and previous_filename, for
           # renames) match, else "other".
           results=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq "$DEFS"'
             .[] | if ([.filename, (.previous_filename // empty)] | all(is_docs))
-                  then "docs" else "other" end')
+                  then "docs" else "other" end') || revoke "could not list files"
 
           total=$(printf '%s\n' "$results" | grep -c . || true)
           others=$(printf '%s\n' "$results" | grep -cx other || true)
-          echo "files=$total expected=$expected non_docs=$others"
+          echo "base=$base files=$total expected=$expected non_docs=$others"
 
-          if [ "$total" -eq 0 ]; then echo "No files listed. Posting nothing."; exit 0; fi
-          if [ "$total" -ne "$expected" ]; then echo "File list incomplete. Posting nothing."; exit 0; fi
-          if [ "$others" -ne 0 ]; then echo "Not docs-only. Posting nothing; normal QA applies."; exit 0; fi
+          [ "$total" -gt 0 ] || revoke "no files listed"
+          [ "$total" -eq "$expected" ] || revoke "file list incomplete ($total of $expected)"
+          [ "$others" -eq 0 ] || revoke "$others non-docs file(s)"
 
-          if [ "$(gh api "repos/$REPO/pulls/$PR" --jq .head.sha)" != "$EVENT_SHA" ]; then
-            echo "Head moved during the check. Posting nothing."
+          pr_json=$(gh api "repos/$REPO/pulls/$PR")
+          if [ "$(jq -r .head.sha <<<"$pr_json")" != "$EVENT_SHA" ]; then
+            echo "Head moved during the check; the newer run decides. Posting nothing."
             exit 0
           fi
+          [ "$(jq -r .base.ref <<<"$pr_json")" = "$DEFAULT_BRANCH" ] || revoke "base changed during the check"
 
           gh api -X POST "repos/$REPO/statuses/$EVENT_SHA" \
             -f state=success \
             -f context="QA checks" \
-            -f description="Docs-only change: QA exempt (brain decision 0005)" \
-            -f target_url="$GITHUB_SERVER_URL/$REPO/actions/runs/$GITHUB_RUN_ID" \
+            -f description="$DOCS_DESC" \
+            -f target_url="$RUN_URL" \
             --silent
           echo "Posted QA checks success on $EVENT_SHA."
