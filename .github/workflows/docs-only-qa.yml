@@ -1,0 +1,90 @@
+# Posts `QA checks` = success on a PR's head SHA only when every changed file is
+# docs, per brain decision 0005 (amended 2026-10-03, approved by Matthew).
+# Posts nothing otherwise, so normal QA (Tessa) applies.
+#
+# Security design:
+# - pull_request_target runs the BASE branch's copy of this file, so a PR can't
+#   edit this workflow to forge a pass.
+# - Never checks out or runs PR code. It only reads the PR's file list via the API.
+# - Minimal token: statuses: write, pull-requests: read.
+# - Do not name a job "QA checks" (decision 0005).
+name: docs-only-qa
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  statuses: write
+  pull-requests: read
+
+concurrency:
+  group: docs-only-qa-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  docs-only-qa:
+    name: docs-only-qa
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Post QA checks success if every changed file is docs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          EVENT_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # Docs patterns (keep identical across repos). A path is docs only if:
+          # - no path segment starts with "." (.github/, .cursor/, .agents/, .claude/, ...)
+          # - no directory segment is a user-facing content dir
+          # - it is not an agent-instructions file (AGENTS.md, CLAUDE.md, GEMINI.md)
+          # - it is not .mdx
+          # - and it is under root docs/ OR ends in .md
+          DEFS='
+            def content_dirs: ["app","src","pages","content","public","blog","posts"];
+            def is_docs:
+              . as $p | ($p | split("/")) as $s
+              | ($s | map(startswith(".")) | any | not)
+                and ([$s[:-1][] | IN(content_dirs[])] | any | not)
+                and (($s[-1] | ascii_downcase) | IN("agents.md","claude.md","gemini.md") | not)
+                and ($p | test("\\.mdx$"; "i") | not)
+                and (($p | startswith("docs/")) or ($p | test("\\.md$"; "i")));
+          '
+
+          head=$(gh api "repos/$REPO/pulls/$PR" --jq .head.sha)
+          expected=$(gh api "repos/$REPO/pulls/$PR" --jq .changed_files)
+          if [ "$head" != "$EVENT_SHA" ]; then
+            echo "Head moved to $head; the newer run decides. Posting nothing."
+            exit 0
+          fi
+
+          # One line per file: "docs" if the filename (and previous_filename, for
+          # renames) match, else "other".
+          results=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq "$DEFS"'
+            .[] | if ([.filename, (.previous_filename // empty)] | all(is_docs))
+                  then "docs" else "other" end')
+
+          total=$(printf '%s\n' "$results" | grep -c . || true)
+          others=$(printf '%s\n' "$results" | grep -cx other || true)
+          echo "files=$total expected=$expected non_docs=$others"
+
+          if [ "$total" -eq 0 ]; then echo "No files listed. Posting nothing."; exit 0; fi
+          if [ "$total" -ne "$expected" ]; then echo "File list incomplete. Posting nothing."; exit 0; fi
+          if [ "$others" -ne 0 ]; then echo "Not docs-only. Posting nothing; normal QA applies."; exit 0; fi
+
+          if [ "$(gh api "repos/$REPO/pulls/$PR" --jq .head.sha)" != "$EVENT_SHA" ]; then
+            echo "Head moved during the check. Posting nothing."
+            exit 0
+          fi
+
+          gh api -X POST "repos/$REPO/statuses/$EVENT_SHA" \
+            -f state=success \
+            -f context="QA checks" \
+            -f description="Docs-only change: QA exempt (brain decision 0005)" \
+            -f target_url="$GITHUB_SERVER_URL/$REPO/actions/runs/$GITHUB_RUN_ID" \
+            --silent
+          echo "Posted QA checks success on $EVENT_SHA."
