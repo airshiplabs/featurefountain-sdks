@@ -5,8 +5,12 @@
 # Security design:
 # - pull_request_target runs the BASE branch's copy of this file, so a PR can't
 #   edit this workflow to forge a pass.
-# - Never checks out or runs PR code. It only reads the PR via the API.
-# - Minimal token: statuses: write, pull-requests: read.
+# - Never checks out or runs PR code. It only reads the PR and a compare via the API.
+# - Minimal read-only token plus statuses: write. contents: read is needed for
+#   the compare API on private repos; nothing is checked out or executed.
+# - Decides from `compare/<default-branch tip>...<head SHA>` (merge-base diff,
+#   computed from SHAs), not the PR's cached file list, which GitHub recomputes
+#   asynchronously after a retarget (e.g. a stacked PR auto-retargeted to main).
 # - Statuses are per SHA, not per PR or base. So the job also runs on `edited`
 #   (fired on a base change), only exempts PRs whose base is the default branch,
 #   and when a PR isn't exempt it revokes its OWN earlier pass on the head SHA
@@ -19,6 +23,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, edited]
 
 permissions:
+  contents: read
   statuses: write
   pull-requests: read
 
@@ -85,40 +90,52 @@ jobs:
             exit 0
           }
 
-          pr_json=$(gh api "repos/$REPO/pulls/$PR")
+          # Retry an API read once before treating it as a failure. A failure
+          # still fails closed: we revoke our own pass rather than leave it.
+          retry() { "$@" || { sleep 5; "$@"; }; }
+
+          pr_json=$(retry gh api "repos/$REPO/pulls/$PR")
           head=$(jq -r .head.sha <<<"$pr_json")
           if [ "$head" != "$EVENT_SHA" ]; then
             echo "Head moved to $head; the newer run decides. Posting nothing."
             exit 0
           fi
-          base=$(jq -r .base.ref <<<"$pr_json")
+          base_ref=$(jq -r .base.ref <<<"$pr_json")
+          base_sha=$(jq -r .base.sha <<<"$pr_json")
           draft=$(jq -r .draft <<<"$pr_json")
-          expected=$(jq -r .changed_files <<<"$pr_json")
 
           [ "$draft" = "false" ] || revoke "draft PR"
-          [ -n "$DEFAULT_BRANCH" ] && [ "$base" = "$DEFAULT_BRANCH" ] \
-            || revoke "base is '$base', not the default branch '$DEFAULT_BRANCH'"
+          [ -n "$DEFAULT_BRANCH" ] && [ "$base_ref" = "$DEFAULT_BRANCH" ] \
+            || revoke "base is '$base_ref', not the default branch '$DEFAULT_BRANCH'"
 
-          # One line per file: "docs" if the filename (and previous_filename, for
-          # renames) match, else "other".
-          results=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq "$DEFS"'
-            .[] | if ([.filename, (.previous_filename // empty)] | all(is_docs))
-                  then "docs" else "other" end') || revoke "could not list files"
+          # Diff the head against the default branch's current tip with the
+          # compare API (merge-base, computed from SHAs), not pulls/N/files.
+          tip=$(retry gh api "repos/$REPO/git/ref/heads/$DEFAULT_BRANCH" --jq .object.sha) \
+            || revoke "could not read the default branch tip"
+          # Prints "missing" or "<files> <non-docs files>". Each file's filename
+          # and previous_filename (renames) must match.
+          summary=$(retry gh api "repos/$REPO/compare/$tip...$EVENT_SHA" --jq "$DEFS"'
+            if (.files | type) != "array" then "missing"
+            else "\(.files | length) \([.files[]
+              | select([.filename, (.previous_filename // empty)] | all(is_docs) | not)] | length)"
+            end') || revoke "could not compare $tip...$EVENT_SHA"
 
-          total=$(printf '%s\n' "$results" | grep -c . || true)
-          others=$(printf '%s\n' "$results" | grep -cx other || true)
-          echo "base=$base files=$total expected=$expected non_docs=$others"
+          [ "$summary" != "missing" ] || revoke "compare returned no file list"
+          read -r total others <<<"$summary"
+          echo "base=$base_ref tip=$tip files=$total non_docs=$others"
 
-          [ "$total" -gt 0 ] || revoke "no files listed"
-          [ "$total" -eq "$expected" ] || revoke "file list incomplete ($total of $expected)"
+          [ "$total" -gt 0 ] || revoke "no files changed"
+          [ "$total" -lt 300 ] || revoke "$total files: compare may be truncated at 300"
           [ "$others" -eq 0 ] || revoke "$others non-docs file(s)"
 
-          pr_json=$(gh api "repos/$REPO/pulls/$PR")
-          if [ "$(jq -r .head.sha <<<"$pr_json")" != "$EVENT_SHA" ]; then
-            echo "Head moved during the check; the newer run decides. Posting nothing."
+          # Re-fetch right before posting. If anything moved, the newer run decides.
+          pr_json=$(retry gh api "repos/$REPO/pulls/$PR")
+          if [ "$(jq -r .head.sha <<<"$pr_json")" != "$EVENT_SHA" ] \
+            || [ "$(jq -r .base.ref <<<"$pr_json")" != "$base_ref" ] \
+            || [ "$(jq -r .base.sha <<<"$pr_json")" != "$base_sha" ]; then
+            echo "Head or base changed during the check; the newer run decides. Posting nothing."
             exit 0
           fi
-          [ "$(jq -r .base.ref <<<"$pr_json")" = "$DEFAULT_BRANCH" ] || revoke "base changed during the check"
 
           gh api -X POST "repos/$REPO/statuses/$EVENT_SHA" \
             -f state=success \
