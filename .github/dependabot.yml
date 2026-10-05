@@ -16,6 +16,12 @@ updates:
       # Moves with the Node runtime (studio standard §1).
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # Pin typescript to v6 for the JS compiler API that typescript-eslint
+      # requires; the TS 7 native compiler is installed as @typescript/native
+      # and provides the `tsc` binary. Collapse back to a single
+      # typescript@7.1+ once the stable API ships and tooling supports it.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       tooling:
         patterns:
