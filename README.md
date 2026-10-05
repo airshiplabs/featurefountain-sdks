@@ -6,12 +6,14 @@ The browser custom element opens FeatureFountain's hosted feature request form. 
 
 ## Build from source
 
-Use Node 22.18.0 or a newer Node 22 release, and pnpm 11.24.0. From this repository:
+Use Node 24 and pnpm 11.24.0. From this repository:
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm build
 pnpm typecheck
+pnpm lint
+pnpm format:check
 pnpm test
 pnpm exec playwright install chromium
 pnpm test:e2e
@@ -19,7 +21,7 @@ pnpm test:e2e
 
 The build produces `dist/index.js` and `dist/index.d.ts` for module imports, plus the standalone browser script `dist/widget.js`. It needs no environment file, service credentials, or application repository.
 
-GitHub Actions runs typecheck, build, package tests, browser tests, and packing on pull requests and pushes to `main`. The workflow uses Node 22, pnpm 11.24.0, and a frozen lockfile. Its browser fixtures need no database or provider secrets. Failed runs retain browser traces for seven days.
+GitHub Actions runs typecheck, lint, format check, build, package tests, browser tests, and packing on pull requests and pushes to `main`. The workflow uses Node 24, pnpm 11.24.0, and a frozen lockfile. Its browser fixtures need no database or provider secrets. Failed runs retain browser traces for seven days.
 
 ## Add the button
 
@@ -88,6 +90,8 @@ Airship Labs maintains `@featurefountain/browser`. Publish from a reviewed commi
 
 ```sh
 pnpm typecheck
+pnpm lint
+pnpm format:check
 pnpm test
 pnpm test:e2e
 npm pack --dry-run
