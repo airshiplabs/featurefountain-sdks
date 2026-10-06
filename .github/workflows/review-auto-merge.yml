@@ -6,7 +6,14 @@ on:
   # Base branch's copy runs, so a PR can't change its own gate. Nothing from
   # the PR is checked out or run.
   pull_request_target:
-    types: [opened, labeled, unlabeled, synchronize, reopened, ready_for_review, converted_to_draft]
+    types:
+      - opened
+      - labeled
+      - unlabeled
+      - synchronize
+      - reopened
+      - ready_for_review
+      - converted_to_draft
 
 jobs:
   auto-merge:
