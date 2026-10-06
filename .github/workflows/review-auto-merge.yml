@@ -1,0 +1,23 @@
+# Turns GitHub auto-merge on for qualifying `review:auto` PRs, and off again
+# when they stop qualifying. Logic: airshiplabs/.github, review-auto-merge.yml
+name: review:auto auto-merge
+
+on:
+  # Base branch's copy runs, so a PR can't change its own gate. Nothing from
+  # the PR is checked out or run.
+  pull_request_target:
+    types:
+      - opened
+      - labeled
+      - unlabeled
+      - synchronize
+      - reopened
+      - ready_for_review
+      - converted_to_draft
+
+jobs:
+  auto-merge:
+    uses: airshiplabs/.github/.github/workflows/review-auto-merge.yml@main
+    permissions:
+      contents: write
+      pull-requests: write
