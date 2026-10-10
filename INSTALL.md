@@ -6,9 +6,9 @@ This guide is for coding agents integrating the browser widget. The custom eleme
 
 Inspect the repository (for example `package.json`, framework config, and HTML entry points) and pick an integration path:
 
-| Stack | Prefer |
-| --- | --- |
-| Plain HTML, or a site with no JS bundler | CDN script tag |
+| Stack                                           | Prefer                                 |
+| ----------------------------------------------- | -------------------------------------- |
+| Plain HTML, or a site with no JS bundler        | CDN script tag                         |
 | React, Next.js, Vue, Svelte, or any bundled app | npm package `@featurefountain/browser` |
 
 Use the **script tag** when the host only serves static HTML or you cannot add an npm dependency. Use **npm** when the app already bundles JavaScript modules.
@@ -88,9 +88,7 @@ export function FeatureFountainButton({
     void import("@featurefountain/browser");
   }, []);
 
-  return (
-    <feature-fountain project-id={projectId} api-base={apiBase} />
-  );
+  return <feature-fountain project-id={projectId} api-base={apiBase} />;
 }
 ```
 
@@ -168,10 +166,10 @@ Import in `onMount` or a `+layout`/`+page` that runs only in the browser:
 
 The element supports **only** these HTML attributes (see `src/index.ts` in this repository):
 
-| Attribute | Required | Description |
-| --- | --- | --- |
-| `project-id` | Yes | Public project UUID. Must match RFC 4122 form (version nibble `1`–`8`, variant `8`/`9`/`a`/`b`). |
-| `api-base` | No | FeatureFountain service origin. Default: `https://featurefountain.ai`. |
+| Attribute    | Required | Description                                                                                      |
+| ------------ | -------- | ------------------------------------------------------------------------------------------------ |
+| `project-id` | Yes      | Public project UUID. Must match RFC 4122 form (version nibble `1`–`8`, variant `8`/`9`/`a`/`b`). |
+| `api-base`   | No       | FeatureFountain service origin. Default: `https://featurefountain.ai`.                           |
 
 `api-base` rules enforced in the widget:
 
@@ -192,12 +190,12 @@ There are no other public attributes, properties, or JavaScript APIs on the elem
 
 The widget reads **attributes**, not process env, at runtime. Map env to attributes in your framework's usual way:
 
-| Convention | Example |
-| --- | --- |
-| Vite | `VITE_FEATUREFOUNTAIN_PROJECT_ID` → `import.meta.env.VITE_FEATUREFOUNTAIN_PROJECT_ID` |
-| Next.js (public) | `NEXT_PUBLIC_FEATUREFOUNTAIN_PROJECT_ID` |
-| Create React App | `REACT_APP_FEATUREFOUNTAIN_PROJECT_ID` |
-| Generic Node/build | `FEATUREFOUNTAIN_PROJECT_ID` injected at build time |
+| Convention         | Example                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| Vite               | `VITE_FEATUREFOUNTAIN_PROJECT_ID` → `import.meta.env.VITE_FEATUREFOUNTAIN_PROJECT_ID` |
+| Next.js (public)   | `NEXT_PUBLIC_FEATUREFOUNTAIN_PROJECT_ID`                                              |
+| Create React App   | `REACT_APP_FEATUREFOUNTAIN_PROJECT_ID`                                                |
+| Generic Node/build | `FEATUREFOUNTAIN_PROJECT_ID` injected at build time                                   |
 
 Optional override for local service:
 
@@ -209,11 +207,11 @@ Read `.env.example` or existing env patterns in the host repo and match those na
 
 If the host sends CSP headers, allow at minimum:
 
-| Directive | CDN script tag | npm bundle |
-| --- | --- | --- |
-| `script-src` | `https://featurefountain.ai` (and existing host scripts) | Host origin / bundler output (no extra host unless you load the CDN too) |
-| `connect-src` | `https://featurefountain.ai` | Same as `api-base` origin (production: `https://featurefountain.ai`) |
-| `frame-src` | `https://featurefountain.ai` | Same as `api-base` origin |
+| Directive     | CDN script tag                                           | npm bundle                                                               |
+| ------------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `script-src`  | `https://featurefountain.ai` (and existing host scripts) | Host origin / bundler output (no extra host unless you load the CDN too) |
+| `connect-src` | `https://featurefountain.ai`                             | Same as `api-base` origin (production: `https://featurefountain.ai`)     |
+| `frame-src`   | `https://featurefountain.ai`                             | Same as `api-base` origin                                                |
 
 `connect-src` must allow `POST` to `/api/v1/projects/{uuid}/embed-sessions`. `frame-src` must allow the embed path on the same origin.
 
@@ -240,15 +238,15 @@ If the button is disabled with a configuration alert, fix `project-id` and `api-
 
 ## 9. Troubleshooting
 
-| Symptom | Likely cause | What to do |
-| --- | --- | --- |
-| Configuration alert; button disabled | Invalid UUID or malformed `api-base` | Use dashboard UUID; set `api-base` to `https://featurefountain.ai` or valid loopback HTTP URL |
-| `POST .../embed-sessions` fails (4xx) from browser | Host origin not in allowed origins | Add the exact browser origin (scheme + host + port) in FeatureFountain settings |
-| Session fails; generic load error | Submissions disabled, wrong project, or service error | Confirm submissions enabled; retry; check FeatureFountain project status |
-| Works on `localhost` but not `127.0.0.1` (or vice versa) | Only one origin allowed | Add both origins if both are used |
-| Widget missing in SSR HTML | Imported on server | Move import to client-only path (`useEffect`, dynamic `ssr: false`, etc.) |
-| CSP console errors | Missing `script-src`, `connect-src`, or `frame-src` | Add directives in section 6 |
-| Form times out after ~10s | Network block or embed never signals ready | Check firewall, CSP, and ad blockers; use **Try again** |
+| Symptom                                                  | Likely cause                                          | What to do                                                                                    |
+| -------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Configuration alert; button disabled                     | Invalid UUID or malformed `api-base`                  | Use dashboard UUID; set `api-base` to `https://featurefountain.ai` or valid loopback HTTP URL |
+| `POST .../embed-sessions` fails (4xx) from browser       | Host origin not in allowed origins                    | Add the exact browser origin (scheme + host + port) in FeatureFountain settings               |
+| Session fails; generic load error                        | Submissions disabled, wrong project, or service error | Confirm submissions enabled; retry; check FeatureFountain project status                      |
+| Works on `localhost` but not `127.0.0.1` (or vice versa) | Only one origin allowed                               | Add both origins if both are used                                                             |
+| Widget missing in SSR HTML                               | Imported on server                                    | Move import to client-only path (`useEffect`, dynamic `ssr: false`, etc.)                     |
+| CSP console errors                                       | Missing `script-src`, `connect-src`, or `frame-src`   | Add directives in section 6                                                                   |
+| Form times out after ~10s                                | Network block or embed never signals ready            | Check firewall, CSP, and ad blockers; use **Try again**                                       |
 
 Local FeatureFountain service: set `api-base` to the loopback service URL (for example `http://127.0.0.1:3000`) and allow that dev host origin in project settings. See `examples/index.html` in this repository.
 
