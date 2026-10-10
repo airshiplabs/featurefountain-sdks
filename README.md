@@ -1,101 +1,73 @@
-# FeatureFountain SDKs
+# FeatureFountain
 
-SDKs for embedding FeatureFountain in host applications. This repository currently contains the `@featurefountain/browser` browser package; SDKs for other platforms will live here as they are added.
+Put a feature-request button on your site; submissions land in your GitHub Project (Projects v2) as draft items.
 
-The browser custom element opens FeatureFountain's hosted feature request form. Configure a public project ID and service origin. The widget contains no GitHub credentials or private destination details.
+<!-- PLACEHOLDER: Add a screenshot or GIF here when a repo asset exists. -->
 
-## Build from source
+## Install
 
-Use Node 24 and pnpm 11.24.0. From this repository:
-
-```sh
-pnpm install --frozen-lockfile
-pnpm build
-pnpm typecheck
-pnpm lint
-pnpm format:check
-pnpm test
-pnpm exec playwright install chromium
-pnpm test:e2e
-```
-
-The build produces `dist/index.js` and `dist/index.d.ts` for module imports, plus the standalone browser script `dist/widget.js`. It needs no environment file, service credentials, or application repository.
-
-GitHub Actions runs typecheck, lint, format check, build, package tests, browser tests, and packing on pull requests and pushes to `main`. The workflow uses Node 24, pnpm 11.24.0, and a frozen lockfile. Its browser fixtures need no database or provider secrets. Failed runs retain browser traces for seven days.
-
-## Add the button
-
-Copy `dist/widget.js` to your site's public files, then add:
+### Script tag
 
 ```html
-<script src="/vendor/featurefountain/widget.js" defer></script>
+<script src="https://featurefountain.ai/widget/v1.js" defer></script>
 <feature-fountain
   project-id="REPLACE_WITH_PUBLIC_PROJECT_UUID"
   api-base="https://featurefountain.ai"
 ></feature-fountain>
 ```
 
-Replace the project ID with the ID from your FeatureFountain dashboard. Configure a private destination, allow your site's exact origin, and enable submissions there.
+Use the public project ID from the FeatureFountain dashboard. Allow your site's exact origin in project settings.
 
-For an application that imports JavaScript modules, install the package:
+### npm
 
 ```sh
 npm install @featurefountain/browser
 ```
 
-Then import it in your browser entry point:
-
 ```js
 import "@featurefountain/browser";
 ```
 
-Importing the module registers `<feature-fountain>`. Repeated script or module loads preserve the existing registration. Set attributes before attaching the element to the page.
-
-Import the module only in a browser: it requires `HTMLElement` and `customElements`. In a server-rendered application, load it after client mount or through a component with server rendering disabled.
+The import registers `<feature-fountain>`. Set attributes before attaching the element to the page. Load the module only in the browser (it uses `HTMLElement` and `customElements`).
 
 | Attribute    | Value                                                                                                                                                                                                           |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `project-id` | Required public project UUID.                                                                                                                                                                                   |
 | `api-base`   | Service origin. Defaults to `https://featurefountain.ai`. HTTPS is required, except HTTP loopback hosts for local development. Credentials, path prefixes, queries, fragments, and wildcard hosts are rejected. |
 
-Never put GitHub tokens, private Project identifiers, or service secrets in the page.
+Do not put GitHub tokens, private project identifiers, or service secrets in the page.
 
-## Local example
+## Requirement
 
-Build the widget, then replace the project UUID in `examples/index.html`. That example uses `http://127.0.0.1:3000` for the local FeatureFountain service.
+You need a GitHub Project you can edit. Your users do not need GitHub accounts.
 
-Serve this repository with a static HTTP server:
+## Links
 
-```sh
-python3 -m http.server 8000 --bind 127.0.0.1
-```
+- [featurefountain.ai](https://featurefountain.ai)
+- [Documentation](https://featurefountain.ai/docs)
 
-Open `http://127.0.0.1:8000/examples/`. Allow `http://127.0.0.1:8000` in the project's settings. Use the same hostname consistently: `localhost` and `127.0.0.1` are different origins.
+Free during early access.
 
-## Form behavior
+## Contact
 
-The button opens a labeled native dialog. Close or Escape dismisses it and restores focus to the button. Closing and reopening preserves the current form while the element remains on the page.
+support@airshiplabs.com
 
-Session and frame loading each stop after ten seconds and show a retry action. Session requests omit credentials. Expired sessions refresh through messages without reloading the form. Messages require the configured service origin, the current iframe window, and the documented message shape.
+## Development
 
-The hosted form owns submission results. A successful result means the service confirmed delivery. An uncertain result permits a status check with the original request key and token. Keep that form open to retain its text and recovery information. Reloading the host page or removing the element loses its in-memory state.
-
-## Package contents
-
-`pnpm pack` rebuilds the package and includes only the compiled `dist` files, this README, the MIT license, and package metadata. Tests check a fresh checkout and inspect its archive for private configuration. The package is published publicly to npm under the `@featurefountain` scope.
-
-## Release
-
-Airship Labs maintains `@featurefountain/browser`. Publish from a reviewed commit with a new, unused version in `package.json`, using an npm account with permission to publish in the `@featurefountain` scope. Install dependencies first, then run:
+This repository ships `@featurefountain/browser`. Use Node 24 and pnpm 11.24.0.
 
 ```sh
+pnpm install --frozen-lockfile
+pnpm build
 pnpm typecheck
 pnpm lint
-pnpm format:check
 pnpm test
+pnpm exec playwright install chromium
 pnpm test:e2e
-npm pack --dry-run
-npm publish --access public
 ```
 
-Packing and publishing rebuild the distribution through `prepack`. Inspect the archive contents before publishing; it should contain only the six public files described above. Never include service environment files or credentials.
+The build outputs `dist/index.js`, `dist/index.d.ts`, and `dist/widget.js`. For a local host page, see `examples/index.html` and serve the repo with a static HTTP server on `127.0.0.1`.
+
+## License
+
+MIT
