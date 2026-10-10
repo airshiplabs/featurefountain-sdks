@@ -4,7 +4,11 @@ Put a feature-request button on your site; submissions land in your GitHub Proje
 
 ## Install
 
-Tell your coding agent: Install FeatureFountain by following [INSTALL.md](INSTALL.md) (`https://github.com/airshiplabs/featurefountain-sdks/blob/main/INSTALL.md`).
+Paste this into your coding agent:
+
+```text
+Install FeatureFountain by following https://github.com/airshiplabs/featurefountain-sdks/blob/main/INSTALL.md
+```
 
 <!-- PLACEHOLDER: Add a screenshot or GIF here when a repo asset exists. -->
 
