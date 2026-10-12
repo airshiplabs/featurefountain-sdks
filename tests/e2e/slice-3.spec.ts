@@ -461,6 +461,150 @@ for (const invalidSession of [
   });
 }
 
+test("ready sends featurefountain:context without query or hash in pageUrl", async ({
+  page,
+  widgetSite,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${widgetSite.hostOrigin}/reports/monthly?token=abc#totals`);
+  await page
+    .getByRole("button", { name: "Request Feature", exact: true })
+    .click();
+  const context = page.frameLocator("iframe").locator("#context");
+  await expect(context).toHaveText(
+    JSON.stringify({
+      type: "featurefountain:context",
+      pageUrl: `${widgetSite.hostOrigin}/reports/monthly`,
+      viewport: "1440x900",
+    }),
+  );
+});
+
+test("metadata property is included in featurefountain:context", async ({
+  page,
+  widgetSite,
+}) => {
+  await page.goto(widgetSite.hostOrigin);
+  await page.locator("feature-fountain").evaluate((widget) => {
+    (widget as HTMLElement & { metadata: unknown }).metadata = {
+      version: "2.4.1",
+      plan: "pro",
+      userId: "u_123",
+    };
+  });
+  await page
+    .getByRole("button", { name: "Request Feature", exact: true })
+    .click();
+  await expect(page.frameLocator("iframe").locator("#context")).toContainText(
+    '"version":"2.4.1"',
+  );
+  await expect(page.frameLocator("iframe").locator("#context")).toContainText(
+    '"userId":"u_123"',
+  );
+});
+
+test("metadata property wins over the metadata attribute", async ({
+  page,
+  widgetSite,
+}) => {
+  await page.goto(
+    `${widgetSite.hostOrigin}/?metadata=${encodeURIComponent(JSON.stringify({ winner: "attribute" }))}`,
+  );
+  await page.locator("feature-fountain").evaluate((widget) => {
+    (widget as HTMLElement & { metadata: unknown }).metadata = {
+      winner: "property",
+    };
+  });
+  await page
+    .getByRole("button", { name: "Request Feature", exact: true })
+    .click();
+  const context = JSON.parse(
+    (await page.frameLocator("iframe").locator("#context").textContent())!,
+  );
+  expect(context).toMatchObject({
+    type: "featurefountain:context",
+    pageUrl: `${widgetSite.hostOrigin}/`,
+    metadata: { winner: "property" },
+  });
+  expect(context.viewport).toMatch(/^\d+x\d+$/);
+});
+
+test("changing metadata at runtime applies when the form reopens", async ({
+  page,
+  widgetSite,
+}) => {
+  await page.goto(widgetSite.hostOrigin);
+  const widget = page.locator("feature-fountain");
+  await widget.evaluate((el) => {
+    (el as HTMLElement & { metadata: unknown }).metadata = { pass: "first" };
+  });
+  await page
+    .getByRole("button", { name: "Request Feature", exact: true })
+    .click();
+  await page.getByRole("button", { name: /close/i }).click();
+  await widget.evaluate((el) => {
+    (el as HTMLElement & { metadata: unknown }).metadata = { pass: "second" };
+  });
+  await page
+    .getByRole("button", { name: "Request Feature", exact: true })
+    .click();
+  const context = JSON.parse(
+    (await page.frameLocator("iframe").locator("#context").textContent())!,
+  );
+  expect(context).toMatchObject({
+    type: "featurefountain:context",
+    pageUrl: `${widgetSite.hostOrigin}/`,
+    metadata: { pass: "second" },
+  });
+});
+
+test("metadata attribute changes do not close an open form", async ({
+  page,
+  widgetSite,
+}) => {
+  await page.goto(widgetSite.hostOrigin);
+  await page
+    .getByRole("button", { name: "Request Feature", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "Request a feature", exact: true }),
+  ).toBeVisible();
+  await page
+    .locator("feature-fountain")
+    .evaluate((widget) =>
+      widget.setAttribute("metadata", JSON.stringify({ version: "1.0.0" })),
+    );
+  await expect(
+    page.getByRole("dialog", { name: "Request a feature", exact: true }),
+  ).toBeVisible();
+});
+
+test("invalid metadata fields are dropped with a console warning", async ({
+  page,
+  widgetSite,
+}) => {
+  const warnings: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "warning") warnings.push(message.text());
+  });
+  await page.goto(widgetSite.hostOrigin);
+  await page.locator("feature-fountain").evaluate((widget) => {
+    (widget as HTMLElement & { metadata: unknown }).metadata = {
+      good: "ok",
+      badNested: { nope: true },
+    };
+  });
+  await page
+    .getByRole("button", { name: "Request Feature", exact: true })
+    .click();
+  await expect(page.frameLocator("iframe").locator("#context")).toContainText(
+    '"good":"ok"',
+  );
+  expect(
+    warnings.some((text) => text.includes('dropped metadata key "badNested"')),
+  ).toBe(true);
+});
+
 test("the dialog fits a narrow host viewport", async ({ page, hostOrigin }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto(hostOrigin);

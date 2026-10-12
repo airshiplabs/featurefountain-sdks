@@ -76,7 +76,7 @@ export const test = base.extend<{ hostOrigin: string; widgetSite: WidgetSite }>(
         }
         response.setHeader("Content-Type", "text/html; charset=utf-8");
         response.end(
-          `<!doctype html><html lang="en"><head><title>Feature request form</title></head><body><form><label for="title">Title</label><input id="title" autofocus><label for="description">Description</label><textarea id="description"></textarea><button>Submit request</button></form><output id="session"></output><script>addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();parent.postMessage({type:'featurefountain:close'},${JSON.stringify(hostOrigin)});}});addEventListener('message',event=>{if(event.origin===${JSON.stringify(hostOrigin)}&&event.source===parent){document.querySelector('#session').textContent=JSON.stringify(event.data);}});document.querySelector('#title').focus();parent.postMessage({type:'featurefountain:ready'},${JSON.stringify(hostOrigin)});</script></body></html>`,
+          `<!doctype html><html lang="en"><head><title>Feature request form</title></head><body><form><label for="title">Title</label><input id="title" autofocus><label for="description">Description</label><textarea id="description"></textarea><button>Submit request</button></form><output id="session"></output><output id="context"></output><script>addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();parent.postMessage({type:'featurefountain:close'},${JSON.stringify(hostOrigin)});}});addEventListener('message',event=>{if(event.origin===${JSON.stringify(hostOrigin)}&&event.source===parent){if(event.data&&event.data.type==='featurefountain:session'){document.querySelector('#session').textContent=JSON.stringify(event.data);}else if(event.data&&event.data.type==='featurefountain:context'){document.querySelector('#context').textContent=JSON.stringify(event.data);}}});document.querySelector('#title').focus();parent.postMessage({type:'featurefountain:ready'},${JSON.stringify(hostOrigin)});</script></body></html>`,
         );
       });
       const hostServer = createServer(async (request, response) => {
@@ -100,7 +100,7 @@ export const test = base.extend<{ hostOrigin: string; widgetSite: WidgetSite }>(
         }
         response.setHeader("Content-Type", "text/html; charset=utf-8");
         response.end(
-          `<!doctype html><html lang="en"><head><title>Independent host</title></head><body><feature-fountain project-id="${attribute(url.searchParams.get("project-id") ?? projectId)}" api-base="${attribute(url.searchParams.get("api-base") ?? formOrigin)}"></feature-fountain><script type="module" src="/widget.js"></script></body></html>`,
+          `<!doctype html><html lang="en"><head><title>Independent host</title></head><body><feature-fountain project-id="${attribute(url.searchParams.get("project-id") ?? projectId)}" api-base="${attribute(url.searchParams.get("api-base") ?? formOrigin)}"${url.searchParams.has("metadata") ? ` metadata="${attribute(url.searchParams.get("metadata") ?? "")}"` : ""}></feature-fountain><script type="module" src="/widget.js"></script></body></html>`,
         );
       });
       try {

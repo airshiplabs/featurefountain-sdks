@@ -102,6 +102,7 @@ declare global {
         React.HTMLAttributes<HTMLElement> & {
           "project-id": string;
           "api-base"?: string;
+          metadata?: Record<string, string | number | boolean>;
         },
         HTMLElement
       >;
@@ -166,10 +167,11 @@ Import in `onMount` or a `+layout`/`+page` that runs only in the browser:
 
 The element supports **only** these HTML attributes (see `src/index.ts` in this repository):
 
-| Attribute    | Required | Description                                                                                      |
-| ------------ | -------- | ------------------------------------------------------------------------------------------------ |
-| `project-id` | Yes      | Public project UUID. Must match RFC 4122 form (version nibble `1`–`8`, variant `8`/`9`/`a`/`b`). |
-| `api-base`   | No       | FeatureFountain service origin. Default: `https://featurefountain.ai`.                           |
+| Attribute / property | Required | Description                                                                                      |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `project-id`         | Yes      | Public project UUID. Must match RFC 4122 form (version nibble `1`–`8`, variant `8`/`9`/`a`/`b`). |
+| `api-base`           | No       | FeatureFountain service origin. Default: `https://featurefountain.ai`.                           |
+| `metadata`           | No       | Optional flat JSON object (attribute) or JavaScript property. See [Metadata](#metadata) below.   |
 
 `api-base` rules enforced in the widget:
 
@@ -184,7 +186,49 @@ Never put GitHub tokens, private project identifiers, or service secrets in the 
 
 The iframe loads `{api-base}/embed/{project-id}?token=...` with `sandbox="allow-scripts allow-forms allow-same-origin"` and `referrerpolicy="no-referrer"`.
 
-There are no other public attributes, properties, or JavaScript APIs on the element.
+The element also exposes a `metadata` **property** (same shape as the attribute). If both are set, the property wins. Set `metadata` before or after attaching the element; the widget reads it each time the form opens. Changing `metadata` while the dialog is open does not close the form—the new value applies the next time the form opens.
+
+### Metadata
+
+Pass a flat object with string, number, or boolean values only (no nested objects, arrays, or `null`). Examples: `version`, `plan`, `userId`.
+
+| Limit               | Value                                                |
+| ------------------- | ---------------------------------------------------- |
+| Keys                | 20 maximum                                           |
+| Key name length     | 40 characters                                        |
+| String value length | 200 characters                                       |
+| Total JSON size     | 4,096 bytes (keys over the cap are dropped in order) |
+
+Invalid keys are dropped in the browser with a `console.warn` that names the key only (never the value). **Do not put passwords, tokens, or other secrets in metadata**—reporters can see every key and value in the hosted form before submit.
+
+```html
+<feature-fountain
+  project-id="YOUR_PUBLIC_PROJECT_UUID"
+  metadata='{"version":"2.4.1","plan":"pro"}'
+></feature-fountain>
+```
+
+```js
+document.querySelector("feature-fountain").metadata = {
+  version: "2.4.1",
+  plan: "pro",
+  userId: "u_123",
+};
+```
+
+React 19 can pass `metadata={{ version, plan, userId }}` on `<feature-fountain>`.
+
+### What the widget sends
+
+After the iframe posts `featurefountain:ready`, the widget sends `featurefountain:context` to the form origin with:
+
+| Field      | Source                         | Example                                       |
+| ---------- | ------------------------------ | --------------------------------------------- |
+| `pageUrl`  | `location.origin` + `pathname` | `https://app.example.com/reports/monthly`     |
+| `viewport` | `innerWidth` × `innerHeight`   | `1440x900`                                    |
+| `metadata` | `metadata` property/attribute  | `{"version":"2.4.1","plan":"pro"}` (optional) |
+
+Query strings and URL fragments are never included in `pageUrl`. The same context message is sent again when the user reopens the dialog with an existing iframe. The hosted form and service may add browser, OS, and received time on submit.
 
 ## 5. Environment variables (host app)
 

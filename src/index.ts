@@ -1,3 +1,16 @@
+import { buildWidgetContext } from "./context.js";
+import {
+  type FeatureFountainMetadata,
+  parseMetadataAttribute,
+  sanitizeMetadata,
+} from "./metadata.js";
+
+export type { FeatureFountainContext } from "./context.js";
+export type {
+  FeatureFountainMetadata,
+  FeatureFountainMetadataValue,
+} from "./metadata.js";
+
 const tagName = "feature-fountain";
 const timeoutMs = 10_000;
 const projectIdPattern =
@@ -76,6 +89,8 @@ class FeatureFountain extends HTMLElement {
   private frameTimeout?: ReturnType<typeof setTimeout>;
   private ready = false;
   private initialized = false;
+  private metadataFromProperty = false;
+  private metadataProperty?: FeatureFountainMetadata;
 
   constructor() {
     super();
@@ -113,6 +128,7 @@ class FeatureFountain extends HTMLElement {
     this.button.addEventListener("click", () => {
       this.dialog.showModal();
       if (!this.frame && !this.request) void this.loadSession();
+      else if (this.frame && this.ready) this.sendContext();
     });
     this.root
       .querySelector("#close")!
@@ -123,6 +139,16 @@ class FeatureFountain extends HTMLElement {
     });
     this.dialog.addEventListener("close", () => this.button.focus());
     this.retry.addEventListener("click", () => void this.loadSession());
+  }
+
+  get metadata(): FeatureFountainMetadata | undefined {
+    return this.metadataProperty;
+  }
+
+  set metadata(value: FeatureFountainMetadata | undefined) {
+    this.metadataFromProperty = true;
+    this.metadataProperty =
+      value === undefined ? undefined : sanitizeMetadata(value);
   }
 
   connectedCallback(): void {
@@ -169,12 +195,33 @@ class FeatureFountain extends HTMLElement {
       this.ready = true;
       clearTimeout(this.frameTimeout);
       this.status.hidden = true;
+      this.sendContext();
     } else if (message.type === "featurefountain:close") {
       this.dialog.close();
     } else if (message.type === "featurefountain:refresh" && this.ready) {
       void this.loadSession();
     }
   };
+
+  private resolvedMetadata(): FeatureFountainMetadata | undefined {
+    if (this.metadataFromProperty) return this.metadataProperty;
+    return parseMetadataAttribute(this.getAttribute("metadata"));
+  }
+
+  private sendContext(): void {
+    if (!this.config || !this.frame?.contentWindow) return;
+    const context = buildWidgetContext(window, this.resolvedMetadata());
+    if (!context) return;
+    this.frame.contentWindow.postMessage(
+      {
+        type: "featurefountain:context",
+        pageUrl: context.pageUrl,
+        viewport: context.viewport,
+        ...(context.metadata ? { metadata: context.metadata } : {}),
+      },
+      this.config.origin,
+    );
+  }
 
   private async loadSession(): Promise<void> {
     if (!this.config || this.request) return;
