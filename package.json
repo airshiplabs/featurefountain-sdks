@@ -43,12 +43,12 @@
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",
-    "@types/node": "24.19.1",
+    "@types/node": "24.19.2",
     "@typescript/native": "npm:typescript@7.0.2",
     "oxfmt": "0.72.0",
     "oxlint": "1.87.0",
     "typescript": "6.0.3",
-    "vitest": "5.0.3"
+    "vitest": "5.0.4"
   },
   "engines": {
     "node": ">=24"
