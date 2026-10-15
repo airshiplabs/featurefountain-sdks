@@ -2,20 +2,21 @@
   "name": "@featurefountain/browser",
   "version": "0.1.0",
   "description": "Public browser component for FeatureFountain",
-  "type": "module",
-  "license": "MIT",
   "homepage": "https://featurefountain.ai",
+  "bugs": {
+    "url": "https://github.com/airshiplabs/featurefountain-sdks/issues"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/airshiplabs/featurefountain-sdks.git"
   },
-  "bugs": {
-    "url": "https://github.com/airshiplabs/featurefountain-sdks/issues"
-  },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -25,14 +26,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "packageManager": "pnpm@11.24.0",
-  "engines": {
-    "node": ">=24"
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -40,20 +36,22 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.5",
     "@playwright/test": "1.64.0",
     "@types/node": "24.19.1",
     "@typescript/native": "npm:typescript@7.0.2",
-    "eslint": "9.39.5",
-    "globals": "17.13.0",
-    "prettier": "3.9.9",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.71.1",
     "vitest": "5.0.3"
-  }
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.24.0"
 }
