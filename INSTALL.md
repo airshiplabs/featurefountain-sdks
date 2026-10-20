@@ -192,7 +192,7 @@ The iframe loads `{api-base}/embed/{encodeURIComponent(project-id)}?token=...&em
 
 Theme values are sent in a `theme` message after the form sends `ready`. They are not placed in the embed URL. Plan limits are enforced by the hosted form, not by this package.
 
-Protocol 1 messages are plain objects. The form sends `ready`, `resize` (`height` integer 100–4096), `close-request`, and `submitted`. After `ready`, the SDK sends `handshake` (`embed: true`) and then `theme` (`accent`, `colorScheme`, `labels`). The handshake `protocol` number is the highest version this page speaks. Higher versions are ignored. See [README](README.md) for the JSON shapes. Types and `parseHostMessage` are exported from `@featurefountain/browser/protocol`.
+Protocol 1 messages are plain objects. Messages with extra keys are rejected. The form sends `ready`, `resize` (`height` integer 1–4096), `close-request`, and `submitted`. The SDK raises the iframe to at least 100px. A `resize` before `ready` waits until the handshake is sent. After `ready`, the SDK sends `handshake` (`embed: true`) and then `theme` (`accent`, `colorScheme`, `labels`). The handshake `protocol` number is the highest version the page speaks. Higher versions are ignored. See [README](README.md) for the JSON shapes. Types and `parseHostMessage` are exported from `@featurefountain/browser/protocol`.
 
 Legacy 0.1.0 messages still work: `featurefountain:ready`, `featurefountain:close`, and `featurefountain:refresh`. They are removed in 0.3.0. The refresh reply is still `{ "type": "featurefountain:session", "token", "expiresAt" }`.
 

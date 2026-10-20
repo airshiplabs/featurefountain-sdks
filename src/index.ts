@@ -1,5 +1,7 @@
 import {
+  clampFrameHeight,
   defaultTheme,
+  embedPathname,
   handshakeMessage,
   isEmbedMessageSource,
   minFrameHeight,
@@ -55,7 +57,7 @@ function embedSession(value: unknown, config: Configuration): EmbedSession {
   const token = url.searchParams.get("token");
   if (
     url.origin !== config.origin ||
-    url.pathname !== `/embed/${encodeURIComponent(config.projectId)}` ||
+    url.pathname !== embedPathname(config.projectId) ||
     url.username ||
     url.password ||
     url.hash ||
@@ -95,6 +97,7 @@ class FeatureFountain extends HTMLElement {
   private theme: Theme = defaultTheme;
   private protocolReady = false;
   private themeQueued = false;
+  private pendingHeight?: number;
   private readonly seenProtocols = new Set<number>();
 
   constructor() {
@@ -282,6 +285,7 @@ class FeatureFountain extends HTMLElement {
         this.protocolReady = true;
         this.postToFrame(handshakeMessage());
         this.postTheme();
+        this.flushPendingHeight();
       }
       return;
     }
@@ -289,8 +293,12 @@ class FeatureFountain extends HTMLElement {
       this.dialog.close();
       return;
     }
-    if (message.kind === "resize" && this.frame) {
-      this.frame.style.height = `${message.height}px`;
+    if (message.kind === "resize") {
+      if (!this.protocolReady) {
+        this.pendingHeight = message.height;
+        return;
+      }
+      this.applyFrameHeight(message.height);
       return;
     }
     if (message.kind === "submitted") {
@@ -301,6 +309,18 @@ class FeatureFountain extends HTMLElement {
     if (message.kind === "legacy-refresh" && this.ready)
       void this.loadSession();
   };
+
+  private applyFrameHeight(height: number): void {
+    if (!this.frame) return;
+    this.frame.style.height = `${clampFrameHeight(height)}px`;
+  }
+
+  private flushPendingHeight(): void {
+    if (this.pendingHeight === undefined) return;
+    const height = this.pendingHeight;
+    this.pendingHeight = undefined;
+    this.applyFrameHeight(height);
+  }
 
   private markReady(): void {
     this.ready = true;
@@ -396,6 +416,7 @@ class FeatureFountain extends HTMLElement {
           this.ready = false;
           this.protocolReady = false;
           this.themeQueued = false;
+          this.pendingHeight = undefined;
           this.showError();
         }, timeoutMs);
       }

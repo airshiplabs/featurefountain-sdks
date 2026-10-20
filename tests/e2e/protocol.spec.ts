@@ -19,10 +19,10 @@ function protocolDocument(host: string): string {
         if (event.data && event.data.type === "handshake" && event.data.embed === true) {
           document.body.dataset.initialized = "true";
           document.querySelector("#hosted-close").hidden = true;
+          parent.postMessage({ source: "featurefountain", protocol: 1, type: "resize", height: 480 }, target);
         }
       });
       parent.postMessage({ source: "featurefountain", protocol: 1, type: "ready" }, target);
-      parent.postMessage({ source: "featurefountain", protocol: 1, type: "resize", height: 480 }, target);
       document.querySelector("#close").onclick = () =>
         parent.postMessage({ source: "featurefountain", protocol: 1, type: "close-request" }, target);
       document.querySelector("#send").onclick = () =>
@@ -254,6 +254,49 @@ test("wrong window and protocol 2 cannot close or resize", async ({
   await expect(
     page.locator('iframe[title="Request a feature"]'),
   ).toHaveJSProperty("style.height", "480px");
+});
+
+test("resize before ready is held and short heights clamp to 100", async ({
+  page,
+  widgetSite,
+}) => {
+  await page.route(`${widgetSite.formOrigin}/embed/**`, (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: '<!doctype html><title>Quiet form</title><p id="mark">Quiet</p>',
+    }),
+  );
+  await page.goto(widgetSite.hostOrigin);
+  await page
+    .getByRole("button", { name: "Request Feature", exact: true })
+    .click();
+  const frame = page.locator('iframe[title="Request a feature"]');
+  const body = page
+    .frameLocator('iframe[title="Request a feature"]')
+    .locator("#mark");
+  await body.waitFor();
+  await body.evaluate((_body, host: string) => {
+    parent.postMessage(
+      { source: "featurefountain", protocol: 1, type: "resize", height: 1 },
+      host,
+    );
+  }, widgetSite.hostOrigin);
+  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  await expect(frame).toHaveJSProperty("style.height", "");
+  await body.evaluate((_body, host: string) => {
+    parent.postMessage(
+      { source: "featurefountain", protocol: 1, type: "ready" },
+      host,
+    );
+  }, widgetSite.hostOrigin);
+  await expect(frame).toHaveJSProperty("style.height", "100px");
+  await body.evaluate((_body, host: string) => {
+    parent.postMessage(
+      { source: "featurefountain", protocol: 1, type: "resize", height: 480 },
+      host,
+    );
+  }, widgetSite.hostOrigin);
+  await expect(frame).toHaveJSProperty("style.height", "480px");
 });
 
 test("the shell closes when the iframe never loads", async ({

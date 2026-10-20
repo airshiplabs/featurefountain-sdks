@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import {
+  clampFrameHeight,
   defaultTheme,
   embedPathname,
   handshakeMessage,
@@ -60,7 +61,7 @@ test("json vectors match protocol 1 parent and form messages", () => {
   }
 });
 
-test("json vectors ignore extra keys, protocol 2, and bad heights", () => {
+test("json vectors reject extra keys, protocol 2, and bad heights", () => {
   for (const message of vectors.ignored) {
     expect(parseHostMessage(message), JSON.stringify(message)).toBeNull();
   }
@@ -98,6 +99,21 @@ test("json vectors reject the wrong window and opaque origins", () => {
   expect(parseHostMessage([])).toBeNull();
   expect(parseHostMessage("ready")).toBeNull();
   expect(parseHostMessage(Object.create(null))).toBeNull();
+});
+
+test("short resize heights stay on the wire and clamp to 100 when applied", () => {
+  expect(
+    parseHostMessage({
+      source: "featurefountain",
+      protocol: 1,
+      type: "resize",
+      height: 1,
+    }),
+  ).toEqual({ kind: "resize", height: 1 });
+  expect(clampFrameHeight(1)).toBe(100);
+  expect(clampFrameHeight(99)).toBe(100);
+  expect(clampFrameHeight(100)).toBe(minFrameHeight);
+  expect(clampFrameHeight(480)).toBe(480);
 });
 
 test("theme stays out of the embed url and the project id is encoded", () => {

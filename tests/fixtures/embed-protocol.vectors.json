@@ -1,5 +1,5 @@
 {
-  "description": "Embed protocol 1 JSON vectors for @featurefountain/browser/protocol. Extra keys and unknown protocol numbers are ignored. The handshake protocol field is the highest version this SDK speaks.",
+  "description": "Embed protocol 1 JSON vectors for @featurefountain/browser/protocol. Messages with extra keys are rejected. Unknown protocol numbers are ignored. The handshake protocol number is the highest version the page speaks. Wire resize heights are integers from 1 to 4096.",
   "source": "featurefountain",
   "protocol": 1,
   "minFrameHeight": 100,
@@ -42,6 +42,24 @@
         "height": 480
       },
       "parsed": { "kind": "resize", "height": 480 }
+    },
+    {
+      "message": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "resize",
+        "height": 1
+      },
+      "parsed": { "kind": "resize", "height": 1 }
+    },
+    {
+      "message": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "resize",
+        "height": 99
+      },
+      "parsed": { "kind": "resize", "height": 99 }
     },
     {
       "message": {
@@ -120,7 +138,7 @@
       "source": "featurefountain",
       "protocol": 1,
       "type": "resize",
-      "height": 99
+      "height": 0
     },
     {
       "source": "featurefountain",

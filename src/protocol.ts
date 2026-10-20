@@ -47,13 +47,20 @@ function plainRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+const wireMinHeight = 1;
+
 function validHeight(value: unknown): value is number {
   return (
     typeof value === "number" &&
     Number.isInteger(value) &&
-    value >= minFrameHeight &&
+    value >= wireMinHeight &&
     value <= maxFrameHeight
   );
+}
+
+/** Iframe pixel height. The wire accepts 1–4096; the shell never goes under 100. */
+export function clampFrameHeight(height: number): number {
+  return Math.max(minFrameHeight, height);
 }
 
 function hasControlCharacter(value: string): boolean {
@@ -107,13 +114,14 @@ export function embedPathname(projectId: string): string {
 
 /**
  * Session URL plus `embed=1`. Theme is never placed here.
- * The project id is written through the URL parser so it is encoded once.
+ * The path comes from `embedPathname`, the only project-id encoder.
  */
 export function withEmbedFlag(sessionHref: string, projectId: string): string {
   const url = new URL(sessionHref);
-  url.pathname = `/embed/${projectId}`;
-  url.searchParams.append("embed", "1");
-  return url.href;
+  const flagged = new URL(`${url.origin}${embedPathname(projectId)}`);
+  flagged.search = url.search;
+  flagged.searchParams.append("embed", "1");
+  return flagged.href;
 }
 
 /**
@@ -205,7 +213,7 @@ export function unsupportedProtocol(data: unknown): number | null {
   return version;
 }
 
-/** Parse a hosted-form message. Extra fields, unknown versions, and unknown types are ignored. */
+/** Parse a hosted-form message. Messages with extra keys are rejected. Unknown versions and unknown types are ignored. */
 export function parseHostMessage(data: unknown): HostMessage | null {
   const message = plainRecord(data);
   if (!message) return null;

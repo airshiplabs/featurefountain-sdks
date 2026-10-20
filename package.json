@@ -39,6 +39,7 @@
     "prepack": "npm run build",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "check:vectors": "node scripts/check-embed-vectors.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",

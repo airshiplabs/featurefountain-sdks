@@ -47,9 +47,9 @@ The dialog shell (overlay, the only Close button, Escape, focus trap, and backdr
 
 `api-base` must be HTTPS. HTTP is allowed only on loopback (`localhost`, `127.0.0.1`, or `[::1]`).
 
-Messages use `postMessage` and are accepted only from the iframe window on the `api-base` origin. A sibling frame on that same origin is ignored. Each message is a plain object. Extra keys are ignored (the message is dropped). Unknown protocol numbers are ignored. The SDK writes one `console.debug` line the first time it sees a higher version.
+Messages use `postMessage` and are accepted only from the iframe window on the `api-base` origin. A sibling frame on that same origin is ignored. Each message is a plain object. Messages with extra keys are rejected. Unknown protocol numbers are ignored. The SDK writes one `console.debug` line the first time it sees a higher version.
 
-The handshake `protocol` number is the highest version this page speaks. The form should answer with that version or lower.
+The handshake `protocol` number is the highest version the page speaks. The form should answer with that version or lower.
 
 Parent to form, after the form sends `ready`:
 
@@ -88,7 +88,7 @@ Form to parent:
 { "source": "featurefountain", "protocol": 1, "type": "resize", "height": 480 }
 ```
 
-`height` is an integer CSS pixel count from 100 to 4096. 100 matches the iframe minimum height. The iframe uses that height and does not scroll itself.
+`height` is an integer from 1 to 4096. The SDK raises the applied iframe height to at least 100px, matching the CSS minimum. A `resize` that arrives before `ready` is held until the handshake has been sent. The iframe does not scroll itself.
 
 ```json
 { "source": "featurefountain", "protocol": 1, "type": "close-request" }
