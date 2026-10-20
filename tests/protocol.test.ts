@@ -17,88 +17,124 @@ import {
   withEmbedFlag,
 } from "../src/protocol.js";
 
-const vectors = JSON.parse(
-  readFileSync(
-    new URL("./fixtures/embed-protocol.vectors.json", import.meta.url),
-    "utf8",
-  ),
-) as {
-  source: string;
-  protocol: number;
-  minFrameHeight: number;
-  maxFrameHeight: number;
-  parentToForm: {
-    handshake: ReturnType<typeof handshakeMessage>;
-    theme: ReturnType<typeof themeMessage>;
-  };
-  formToParent: { message: unknown; parsed: unknown }[];
-  legacy: { message: unknown; parsed: unknown }[];
-  ignored: unknown[];
-  delivery: {
-    name: string;
-    origin: string;
-    source: string;
-    expectedOrigin: string;
-    frame: string;
-    accept: boolean;
-  }[];
+type MessageVector = {
+  name: string;
+  product: string;
+  data: Record<string, unknown>;
+  kind: string | null;
 };
 
-test("json vectors match protocol 1 parent and form messages", () => {
-  expect(vectors.protocol).toBe(1);
-  expect(vectors.source).toBe("featurefountain");
-  expect(vectors.minFrameHeight).toBe(minFrameHeight);
-  expect(vectors.maxFrameHeight).toBe(maxFrameHeight);
-  expect(minFrameHeight).toBe(100);
-  expect(labelMax).toBe(60);
-  expect(handshakeMessage()).toEqual(vectors.parentToForm.handshake);
-  expect(themeMessage(defaultTheme)).toEqual(vectors.parentToForm.theme);
-  for (const vector of [...vectors.formToParent, ...vectors.legacy]) {
-    expect(
-      parseHostMessage(vector.message),
-      JSON.stringify(vector.message),
-    ).toEqual(vector.parsed);
-  }
-});
+type ParentVector = {
+  name: string;
+  product: string;
+  data: Record<string, unknown>;
+  origin: string;
+  parentOrigin: string;
+  sourceIsParent: boolean;
+  framed: boolean;
+  hidesClose: boolean;
+};
 
-test("json vectors reject extra keys, protocol 2, and bad heights", () => {
-  for (const message of vectors.ignored) {
-    expect(parseHostMessage(message), JSON.stringify(message)).toBeNull();
+const vectors = JSON.parse(
+  readFileSync(
+    new URL("./fixtures/embed-protocol.json", import.meta.url),
+    "utf8",
+  ),
+) as { messages: MessageVector[]; parent: ParentVector[] };
+
+function message(name: string): MessageVector {
+  const found = vectors.messages.find((item) => item.name === name);
+  if (!found) throw new Error(`Missing message vector ${name}`);
+  return found;
+}
+
+function parent(name: string): ParentVector {
+  const found = vectors.parent.find((item) => item.name === name);
+  if (!found) throw new Error(`Missing parent vector ${name}`);
+  return found;
+}
+
+test("featurefountain rows in the shared protocol vectors", () => {
+  const formKinds = new Set(["ready", "resize", "close-request", "submitted"]);
+  const rows = vectors.messages.filter(
+    (item) => item.product === "featurefountain",
+  );
+  expect(rows.length).toBeGreaterThan(0);
+  for (const row of rows) {
+    const parsed = parseHostMessage(row.data);
+    if (row.kind === "handshake") {
+      expect(row.data, row.name).toEqual(handshakeMessage());
+      expect(parsed, row.name).toBeNull();
+    } else if (row.kind === "resize") {
+      expect(parsed, row.name).toEqual({
+        kind: "resize",
+        height: row.data.height,
+      });
+    } else if (row.kind && formKinds.has(row.kind)) {
+      expect(parsed, row.name).toEqual({ kind: row.kind });
+    } else {
+      expect(parsed, row.name).toBeNull();
+    }
   }
+  const shortest = message("resize min height");
   expect(
-    unsupportedProtocol({
-      source: "featurefountain",
-      protocol: 2,
-      type: "close-request",
-    }),
-  ).toBe(2);
+    parseHostMessage({ ...shortest.data, source: "featurefountain" }),
+  ).toEqual({ kind: "resize", height: 1 });
+  expect(clampFrameHeight(1)).toBe(minFrameHeight);
   expect(
-    unsupportedProtocol({
+    parseHostMessage({
+      ...message("extra field").data,
       source: "featurefountain",
-      protocol: 1,
-      type: "ready",
     }),
   ).toBeNull();
-  expect(unsupportedProtocol({ type: "featurefountain:close" })).toBeNull();
+  expect(
+    unsupportedProtocol({
+      ...message("protocol 2").data,
+      source: "featurefountain",
+    }),
+  ).toBe(2);
+  expect(parseHostMessage({ type: "featurefountain:ready" })).toEqual({
+    kind: "legacy-ready",
+  });
+  expect(parseHostMessage({ type: "featurefountain:refresh" })).toEqual({
+    kind: "legacy-refresh",
+  });
+  expect(labelMax).toBe(60);
+  expect(maxFrameHeight).toBe(4096);
 });
 
-test("json vectors reject the wrong window and opaque origins", () => {
-  const windows: Record<string, object> = { frame: {}, sibling: {} };
-  for (const vector of vectors.delivery) {
-    expect(
-      isEmbedMessageSource(
-        vector.origin,
-        windows[vector.source],
-        vector.expectedOrigin,
-        windows[vector.frame],
-      ),
-      vector.name,
-    ).toBe(vector.accept);
-  }
-  expect(parseHostMessage(null)).toBeNull();
-  expect(parseHostMessage([])).toBeNull();
-  expect(parseHostMessage("ready")).toBeNull();
-  expect(parseHostMessage(Object.create(null))).toBeNull();
+test("parent vectors reject the wrong window and an opaque origin", () => {
+  const frame = {};
+  const otherWindow = {};
+  const wrong = parent("wrong window");
+  expect(wrong.hidesClose).toBe(false);
+  expect(
+    isEmbedMessageSource(wrong.origin, otherWindow, wrong.parentOrigin, frame),
+  ).toBe(false);
+  expect(
+    isEmbedMessageSource(wrong.origin, frame, wrong.parentOrigin, frame),
+  ).toBe(true);
+  const opaque = parent("opaque origin");
+  expect(opaque.hidesClose).toBe(false);
+  expect(
+    isEmbedMessageSource(opaque.origin, frame, opaque.parentOrigin, frame),
+  ).toBe(false);
+  const handshake = parent("featurefountain handshake from parent");
+  expect(handshake.hidesClose).toBe(true);
+  expect(handshake.data).toEqual(handshakeMessage());
+  expect(
+    isEmbedMessageSource(
+      handshake.origin,
+      frame,
+      handshake.parentOrigin,
+      frame,
+    ),
+  ).toBe(true);
+  const protocol2 = parent("protocol 2 from parent");
+  expect(protocol2.hidesClose).toBe(false);
+  expect(
+    unsupportedProtocol({ ...protocol2.data, source: "featurefountain" }),
+  ).toBe(2);
 });
 
 test("short resize heights stay on the wire and clamp to 100 when applied", () => {

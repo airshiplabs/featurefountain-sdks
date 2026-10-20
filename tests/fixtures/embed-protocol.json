@@ -1,0 +1,358 @@
+{
+  "messages": [
+    {
+      "name": "bugbeacon handshake",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "handshake", "embed": true },
+      "kind": "handshake"
+    },
+    {
+      "name": "featurefountain handshake",
+      "product": "featurefountain",
+      "data": { "source": "featurefountain", "protocol": 1, "type": "handshake", "embed": true },
+      "kind": "handshake"
+    },
+    {
+      "name": "bugbeacon theme",
+      "product": "bugbeacon",
+      "data": {
+        "source": "bugbeacon",
+        "protocol": 1,
+        "type": "theme",
+        "accent": "#365fe8",
+        "colorScheme": "light",
+        "labels": {
+          "trigger": "Report Bug",
+          "title": "Report a bug",
+          "close": "Close",
+          "submit": "Send report"
+        }
+      },
+      "kind": "theme"
+    },
+    {
+      "name": "featurefountain theme",
+      "product": "featurefountain",
+      "data": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "theme",
+        "accent": "#1c5060",
+        "colorScheme": "dark",
+        "labels": {
+          "trigger": "Request Feature",
+          "title": "Request a feature",
+          "close": "Close",
+          "submit": "Send request"
+        }
+      },
+      "kind": "theme"
+    },
+    {
+      "name": "bugbeacon ready",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "ready" },
+      "kind": "ready"
+    },
+    {
+      "name": "featurefountain ready",
+      "product": "featurefountain",
+      "data": { "source": "featurefountain", "protocol": 1, "type": "ready" },
+      "kind": "ready"
+    },
+    {
+      "name": "bugbeacon resize",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "resize", "height": 480 },
+      "kind": "resize"
+    },
+    {
+      "name": "resize min height",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "resize", "height": 1 },
+      "kind": "resize"
+    },
+    {
+      "name": "resize max height",
+      "product": "featurefountain",
+      "data": { "source": "featurefountain", "protocol": 1, "type": "resize", "height": 4096 },
+      "kind": "resize"
+    },
+    {
+      "name": "bugbeacon close-request",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "close-request" },
+      "kind": "close-request"
+    },
+    {
+      "name": "featurefountain close-request",
+      "product": "featurefountain",
+      "data": { "source": "featurefountain", "protocol": 1, "type": "close-request" },
+      "kind": "close-request"
+    },
+    {
+      "name": "bugbeacon submitted",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "submitted" },
+      "kind": "submitted"
+    },
+    {
+      "name": "featurefountain submitted",
+      "product": "featurefountain",
+      "data": { "source": "featurefountain", "protocol": 1, "type": "submitted" },
+      "kind": "submitted"
+    },
+    {
+      "name": "protocol 2",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 2, "type": "handshake", "embed": true },
+      "kind": null
+    },
+    {
+      "name": "protocol string",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": "1", "type": "ready" },
+      "kind": null
+    },
+    {
+      "name": "legacy version field",
+      "product": "bugbeacon",
+      "data": { "type": "embed", "version": 1 },
+      "kind": null
+    },
+    {
+      "name": "legacy init",
+      "product": "bugbeacon",
+      "data": { "type": "bugbeacon:init", "version": 1 },
+      "kind": null
+    },
+    {
+      "name": "prefixed type",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "bugbeacon:ready" },
+      "kind": null
+    },
+    {
+      "name": "extra field",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "ready", "embed": true },
+      "kind": null
+    },
+    {
+      "name": "wrong source",
+      "product": "bugbeacon",
+      "data": { "source": "featurefountain", "protocol": 1, "type": "handshake", "embed": true },
+      "kind": null
+    },
+    {
+      "name": "embed false",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "handshake", "embed": false },
+      "kind": null
+    },
+    {
+      "name": "height zero",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "resize", "height": 0 },
+      "kind": null
+    },
+    {
+      "name": "height too large",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "resize", "height": 4097 },
+      "kind": null
+    },
+    {
+      "name": "height fraction",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "resize", "height": 1.5 },
+      "kind": null
+    },
+    {
+      "name": "bad accent",
+      "product": "bugbeacon",
+      "data": {
+        "source": "bugbeacon",
+        "protocol": 1,
+        "type": "theme",
+        "accent": "red",
+        "colorScheme": "light",
+        "labels": {
+          "trigger": "Report Bug",
+          "title": "Report a bug",
+          "close": "Close",
+          "submit": "Send report"
+        }
+      },
+      "kind": null
+    },
+    {
+      "name": "bad color scheme",
+      "product": "featurefountain",
+      "data": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "theme",
+        "accent": "#112233",
+        "colorScheme": "system",
+        "labels": {
+          "trigger": "Request Feature",
+          "title": "Request a feature",
+          "close": "Close",
+          "submit": "Send request"
+        }
+      },
+      "kind": null
+    },
+    {
+      "name": "label too long",
+      "product": "bugbeacon",
+      "data": {
+        "source": "bugbeacon",
+        "protocol": 1,
+        "type": "theme",
+        "accent": "#112233",
+        "colorScheme": "dark",
+        "labels": {
+          "trigger": "Report Bug Report Bug Report Bug Report Bug Report Bug Report Bug",
+          "title": "Report a bug",
+          "close": "Close",
+          "submit": "Send report"
+        }
+      },
+      "kind": null
+    },
+    {
+      "name": "label control character",
+      "product": "bugbeacon",
+      "data": {
+        "source": "bugbeacon",
+        "protocol": 1,
+        "type": "theme",
+        "accent": "#112233",
+        "colorScheme": "light",
+        "labels": {
+          "trigger": "Report\u0001Bug",
+          "title": "Report a bug",
+          "close": "Close",
+          "submit": "Send report"
+        }
+      },
+      "kind": null
+    },
+    {
+      "name": "session is not protocol",
+      "product": "featurefountain",
+      "data": {
+        "type": "featurefountain:session",
+        "token": "token",
+        "expiresAt": "2030-01-01T00:00:00.000Z"
+      },
+      "kind": null
+    }
+  ],
+  "parent": [
+    {
+      "name": "handshake from parent",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "handshake", "embed": true },
+      "origin": "https://host.example",
+      "parentOrigin": "https://host.example",
+      "sourceIsParent": true,
+      "framed": true,
+      "hidesClose": true
+    },
+    {
+      "name": "featurefountain handshake from parent",
+      "product": "featurefountain",
+      "data": { "source": "featurefountain", "protocol": 1, "type": "handshake", "embed": true },
+      "origin": "https://host.example",
+      "parentOrigin": "https://host.example",
+      "sourceIsParent": true,
+      "framed": true,
+      "hidesClose": true
+    },
+    {
+      "name": "wrong window",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "handshake", "embed": true },
+      "origin": "https://host.example",
+      "parentOrigin": "https://host.example",
+      "sourceIsParent": false,
+      "framed": true,
+      "hidesClose": false
+    },
+    {
+      "name": "wrong origin",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "handshake", "embed": true },
+      "origin": "https://other.example",
+      "parentOrigin": "https://host.example",
+      "sourceIsParent": true,
+      "framed": true,
+      "hidesClose": false
+    },
+    {
+      "name": "direct visit",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "handshake", "embed": true },
+      "origin": "https://host.example",
+      "parentOrigin": "https://host.example",
+      "sourceIsParent": true,
+      "framed": false,
+      "hidesClose": false
+    },
+    {
+      "name": "protocol 2 from parent",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 2, "type": "handshake", "embed": true },
+      "origin": "https://host.example",
+      "parentOrigin": "https://host.example",
+      "sourceIsParent": true,
+      "framed": true,
+      "hidesClose": false
+    },
+    {
+      "name": "theme does not hide close",
+      "product": "bugbeacon",
+      "data": {
+        "source": "bugbeacon",
+        "protocol": 1,
+        "type": "theme",
+        "accent": "#365fe8",
+        "colorScheme": "light",
+        "labels": {
+          "trigger": "Report Bug",
+          "title": "Report a bug",
+          "close": "Close",
+          "submit": "Send report"
+        }
+      },
+      "origin": "https://host.example",
+      "parentOrigin": "https://host.example",
+      "sourceIsParent": true,
+      "framed": true,
+      "hidesClose": false
+    },
+    {
+      "name": "opaque origin",
+      "product": "bugbeacon",
+      "data": { "source": "bugbeacon", "protocol": 1, "type": "handshake", "embed": true },
+      "origin": "null",
+      "parentOrigin": "null",
+      "sourceIsParent": true,
+      "framed": true,
+      "hidesClose": false
+    },
+    {
+      "name": "legacy init from parent",
+      "product": "bugbeacon",
+      "data": { "type": "bugbeacon:init", "version": 1 },
+      "origin": "https://host.example",
+      "parentOrigin": "https://host.example",
+      "sourceIsParent": true,
+      "framed": true,
+      "hidesClose": false
+    }
+  ]
+}

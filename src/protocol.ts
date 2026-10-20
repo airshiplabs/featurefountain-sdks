@@ -47,13 +47,13 @@ function plainRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-const wireMinHeight = 1;
+export const minWireHeight = 1;
 
 function validHeight(value: unknown): value is number {
   return (
     typeof value === "number" &&
     Number.isInteger(value) &&
-    value >= wireMinHeight &&
+    value >= minWireHeight &&
     value <= maxFrameHeight
   );
 }
@@ -225,6 +225,13 @@ export function parseHostMessage(data: unknown): HostMessage | null {
       return { kind: "legacy-close" };
     if (message.type === "featurefountain:refresh")
       return { kind: "legacy-refresh" };
+    return null;
+  }
+  if (keys.length === 2 && message.version === 1) {
+    if (message.type === "featurefountain:ready")
+      return { kind: "legacy-ready" };
+    if (message.type === "featurefountain:close")
+      return { kind: "legacy-close" };
     return null;
   }
   if (message.source !== messageSource || message.protocol !== protocolVersion)

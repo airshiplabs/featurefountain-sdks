@@ -6,6 +6,8 @@
     "dist/**",
     "coverage/**",
     "pnpm-lock.yaml",
+    "tests/fixtures/embed-protocol.json",
+    "tests/fixtures/embed-protocol.json.sha256",
     "playwright-report/**",
     "test-results/**"
   ]
