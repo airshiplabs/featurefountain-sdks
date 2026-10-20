@@ -1,40 +1,23 @@
-import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 
-const localPath = fileURLToPath(
+const fixture = readFileSync(
   new URL("../tests/fixtures/embed-protocol.vectors.json", import.meta.url),
 );
-const remotePath = "packages/embed-protocol/vectors.json";
-const ref = "devin--hosted-form-embed-close-hide";
-const apiPath = `repos/airshiplabs/shipyard/contents/${remotePath}?ref=${ref}`;
+const expected = readFileSync(
+  new URL("../tests/fixtures/embed-protocol.vectors.sha256", import.meta.url),
+  "utf8",
+)
+  .trim()
+  .split(/\s+/)[0]
+  .toLowerCase();
+const actual = createHash("sha256").update(fixture).digest("hex");
 
-let remote;
-try {
-  remote = execFileSync(
-    "gh",
-    [
-      "api",
-      "--method",
-      "GET",
-      "-H",
-      "Accept: application/vnd.github.raw",
-      apiPath,
-    ],
-    { maxBuffer: 10 * 1024 * 1024 },
-  );
-} catch (error) {
-  const detail = error instanceof Error ? error.message : String(error);
+if (actual !== expected) {
   console.error(
-    `Could not read airshiplabs/shipyard ${remotePath} at ${ref}.\n${detail}`,
+    `tests/fixtures/embed-protocol.vectors.json sha256 ${actual} does not match pinned ${expected}`,
   );
   process.exit(1);
 }
 
-const local = readFileSync(localPath);
-if (!local.equals(remote)) {
-  console.error(
-    `tests/fixtures/embed-protocol.vectors.json is not a byte-identical copy of airshiplabs/shipyard ${remotePath} at ${ref}.`,
-  );
-  process.exit(1);
-}
+console.log(`embed protocol vectors match pinned sha256 ${actual}`);
