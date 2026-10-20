@@ -91,6 +91,13 @@ export const test = base.extend<{ hostOrigin: string; widgetSite: WidgetSite }>(
           );
           return;
         }
+        if (url.pathname === "/protocol.js") {
+          response.setHeader("Content-Type", "application/javascript");
+          response.end(
+            await readFile(new URL("../../dist/protocol.js", import.meta.url)),
+          );
+          return;
+        }
         if (url.pathname === "/browser.js") {
           response.setHeader("Content-Type", "application/javascript");
           response.end(

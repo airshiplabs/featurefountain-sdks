@@ -16,7 +16,7 @@ test("keyboard_user_opens_and_dismisses_hosted_form", async ({
   await expect(
     page.getByRole("dialog", { name: "Request a feature", exact: true }),
   ).toBeVisible();
-  const form = page.frameLocator('iframe[title="Feature request form"]');
+  const form = page.frameLocator('iframe[title="Request a feature"]');
   await expect(form.getByLabel("Title", { exact: true })).toBeFocused();
   await page.keyboard.type("Keyboard shortcuts");
   await expect(form.getByLabel("Title", { exact: true })).toHaveValue(
@@ -154,7 +154,7 @@ test("the hosted frame has its accessibility and privacy attributes", async ({
   await page
     .getByRole("button", { name: "Request Feature", exact: true })
     .click();
-  const frame = page.locator('iframe[title="Feature request form"]');
+  const frame = page.locator('iframe[title="Request a feature"]');
   await expect(frame).toHaveAttribute("referrerpolicy", "no-referrer");
   await expect(frame).toHaveAttribute(
     "sandbox",
@@ -178,7 +178,7 @@ test("closing and reopening preserves form text and returns focus", async ({
   await expect(button).toBeVisible();
   await button.click();
   const title = page
-    .frameLocator('iframe[title="Feature request form"]')
+    .frameLocator('iframe[title="Request a feature"]')
     .getByLabel("Title", { exact: true });
   await title.fill("Keep these words");
   await page.getByRole("button", { name: /close/i }).click();
@@ -314,7 +314,7 @@ test("refresh sends the new session to the existing frame without losing text", 
   );
   await expect(page.locator("iframe")).toHaveAttribute(
     "src",
-    `${widgetSite.formOrigin}/embed/${widgetSite.projectId}?token=public-test-token`,
+    `${widgetSite.formOrigin}/embed/${widgetSite.projectId}?token=public-test-token&embed=1`,
   );
 });
 

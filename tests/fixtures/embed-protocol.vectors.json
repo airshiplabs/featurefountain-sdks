@@ -1,0 +1,190 @@
+{
+  "description": "Embed protocol 1 JSON vectors for @featurefountain/browser/protocol. Extra keys and unknown protocol numbers are ignored. The handshake protocol field is the highest version this SDK speaks.",
+  "source": "featurefountain",
+  "protocol": 1,
+  "minFrameHeight": 100,
+  "maxFrameHeight": 4096,
+  "parentToForm": {
+    "handshake": {
+      "source": "featurefountain",
+      "protocol": 1,
+      "type": "handshake",
+      "embed": true
+    },
+    "theme": {
+      "source": "featurefountain",
+      "protocol": 1,
+      "type": "theme",
+      "accent": "#1c5060",
+      "colorScheme": "light",
+      "labels": {
+        "trigger": "Request Feature",
+        "title": "Request a feature",
+        "close": "Close",
+        "submit": "Submit request"
+      }
+    }
+  },
+  "formToParent": [
+    {
+      "message": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "ready"
+      },
+      "parsed": { "kind": "ready" }
+    },
+    {
+      "message": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "resize",
+        "height": 480
+      },
+      "parsed": { "kind": "resize", "height": 480 }
+    },
+    {
+      "message": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "resize",
+        "height": 100
+      },
+      "parsed": { "kind": "resize", "height": 100 }
+    },
+    {
+      "message": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "resize",
+        "height": 4096
+      },
+      "parsed": { "kind": "resize", "height": 4096 }
+    },
+    {
+      "message": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "close-request"
+      },
+      "parsed": { "kind": "close-request" }
+    },
+    {
+      "message": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "submitted"
+      },
+      "parsed": { "kind": "submitted" }
+    }
+  ],
+  "legacy": [
+    {
+      "message": { "type": "featurefountain:ready" },
+      "parsed": { "kind": "legacy-ready" }
+    },
+    {
+      "message": { "type": "featurefountain:close" },
+      "parsed": { "kind": "legacy-close" }
+    },
+    {
+      "message": { "type": "featurefountain:refresh" },
+      "parsed": { "kind": "legacy-refresh" }
+    }
+  ],
+  "ignored": [
+    { "source": "featurefountain", "protocol": 2, "type": "close-request" },
+    {
+      "source": "featurefountain",
+      "protocol": 2,
+      "type": "resize",
+      "height": 200
+    },
+    {
+      "source": "featurefountain",
+      "protocol": 1,
+      "type": "ready",
+      "extra": true
+    },
+    {
+      "source": "featurefountain",
+      "protocol": 1,
+      "type": "resize",
+      "height": 480,
+      "extra": 1
+    },
+    { "source": "bugbeacon", "protocol": 1, "type": "ready" },
+    { "source": "featurefountain", "protocol": "1", "type": "ready" },
+    { "source": "featurefountain", "protocol": 0, "type": "ready" },
+    {
+      "source": "featurefountain",
+      "protocol": 1,
+      "type": "resize",
+      "height": 99
+    },
+    {
+      "source": "featurefountain",
+      "protocol": 1,
+      "type": "resize",
+      "height": 4097
+    },
+    {
+      "source": "featurefountain",
+      "protocol": 1,
+      "type": "resize",
+      "height": 100.5
+    },
+    {
+      "source": "featurefountain",
+      "protocol": 1,
+      "type": "resize",
+      "height": "480"
+    },
+    { "source": "featurefountain", "protocol": 1, "type": "theme" },
+    { "source": "featurefountain", "protocol": 1, "type": "handshake" },
+    { "type": "featurefountain:close", "token": "injected" },
+    { "type": "featurefountain:destroy" }
+  ],
+  "delivery": [
+    {
+      "name": "iframe window on the service origin",
+      "origin": "https://service.example",
+      "source": "frame",
+      "expectedOrigin": "https://service.example",
+      "frame": "frame",
+      "accept": true
+    },
+    {
+      "name": "wrong window on the service origin",
+      "origin": "https://service.example",
+      "source": "sibling",
+      "expectedOrigin": "https://service.example",
+      "frame": "frame",
+      "accept": false
+    },
+    {
+      "name": "right window on the wrong origin",
+      "origin": "https://attacker.example",
+      "source": "frame",
+      "expectedOrigin": "https://service.example",
+      "frame": "frame",
+      "accept": false
+    },
+    {
+      "name": "null origin",
+      "origin": "null",
+      "source": "frame",
+      "expectedOrigin": "null",
+      "frame": "frame",
+      "accept": false
+    },
+    {
+      "name": "empty origin",
+      "origin": "",
+      "source": "frame",
+      "expectedOrigin": "",
+      "frame": "frame",
+      "accept": false
+    }
+  ]
+}

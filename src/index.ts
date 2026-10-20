@@ -1,5 +1,21 @@
+import {
+  defaultTheme,
+  handshakeMessage,
+  isEmbedMessageSource,
+  minFrameHeight,
+  parseHostMessage,
+  parseServiceOrigin,
+  protocolVersion,
+  themeFromAttributes,
+  themeMessage,
+  unsupportedProtocol,
+  withEmbedFlag,
+  type Theme,
+} from "./protocol.js";
+
 const tagName = "feature-fountain";
 const timeoutMs = 10_000;
+const submittedStatus = "Request submitted.";
 const projectIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -16,23 +32,12 @@ interface EmbedSession {
 
 function configuration(element: HTMLElement): Configuration {
   const projectId = element.getAttribute("project-id") ?? "";
-  const base = element.getAttribute("api-base") ?? "https://featurefountain.ai";
-  if (
-    !projectIdPattern.test(projectId) ||
-    !/^https?:\/\/[^/?#@\\\s]+\/?$/i.test(base)
-  )
+  const origin = parseServiceOrigin(
+    element.getAttribute("api-base") ?? "https://featurefountain.ai",
+  );
+  if (!projectIdPattern.test(projectId) || origin === null)
     throw new Error("Check the project ID and API origin configuration.");
-  const url = new URL(base);
-  const loopback =
-    url.hostname === "localhost" ||
-    url.hostname === "[::1]" ||
-    /^127\.\d+\.\d+\.\d+$/.test(url.hostname);
-  if (
-    /\*|%2a/i.test(url.hostname) ||
-    (url.protocol !== "https:" && !(url.protocol === "http:" && loopback))
-  )
-    throw new Error("Use an HTTPS API origin, or HTTP on a loopback host.");
-  return { projectId, origin: url.origin };
+  return { projectId, origin };
 }
 
 function embedSession(value: unknown, config: Configuration): EmbedSession {
@@ -50,7 +55,7 @@ function embedSession(value: unknown, config: Configuration): EmbedSession {
   const token = url.searchParams.get("token");
   if (
     url.origin !== config.origin ||
-    url.pathname !== `/embed/${config.projectId}` ||
+    url.pathname !== `/embed/${encodeURIComponent(config.projectId)}` ||
     url.username ||
     url.password ||
     url.hash ||
@@ -64,9 +69,20 @@ function embedSession(value: unknown, config: Configuration): EmbedSession {
 }
 
 class FeatureFountain extends HTMLElement {
+  static observedAttributes = [
+    "accent",
+    "color-scheme",
+    "label",
+    "heading",
+    "submit-label",
+    "close-label",
+  ];
+
   private readonly root = this.attachShadow({ mode: "open" });
   private readonly button: HTMLButtonElement;
   private readonly dialog: HTMLDialogElement;
+  private readonly closeButton: HTMLButtonElement;
+  private readonly heading: HTMLHeadingElement;
   private readonly status: HTMLElement;
   private readonly error: HTMLElement;
   private readonly retry: HTMLButtonElement;
@@ -76,30 +92,100 @@ class FeatureFountain extends HTMLElement {
   private frameTimeout?: ReturnType<typeof setTimeout>;
   private ready = false;
   private initialized = false;
+  private theme: Theme = defaultTheme;
+  private protocolReady = false;
+  private themeQueued = false;
+  private readonly seenProtocols = new Set<number>();
 
   constructor() {
     super();
     this.root.innerHTML = `
       <style>
-        :host{display:inline-block;font-family:system-ui,sans-serif;color:#17232c}
-        button{font:inherit;cursor:pointer;border:1px solid #1c5060;border-radius:8px;padding:.65rem 1rem;background:#1c5060;color:white}
-        button:focus-visible{outline:3px solid #cb710b;outline-offset:3px}
-        button:disabled{cursor:not-allowed;opacity:.6}
-        dialog{box-sizing:border-box;width:640px;height:640px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);padding:0;border:1px solid #b8c8cc;border-radius:12px;background:#fff;color:inherit}
-        dialog::backdrop{background:rgb(10 25 35 / .55)}
-        .contents{display:flex;flex-direction:column;height:100%;min-height:0}
-        header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px;border-bottom:1px solid #dde5e7}
-        h2{margin:0;font-size:1.15rem}header button{padding:.4rem .7rem}
-        iframe{flex:1;width:100%;min-height:0;border:0}
-        [role=status],[role=alert]{margin:16px;line-height:1.5}
-        #retry{align-self:flex-start;margin:0 16px 16px}
-        [hidden]{display:none!important}
+        :host {
+          display: inline-block;
+          --ff-accent: ${defaultTheme.accent};
+          --ff-text: #17232c;
+          --ff-surface: #fff;
+          --ff-header-border: #dde5e7;
+          --ff-dialog-border: #b8c8cc;
+          --ff-close-bg: #f4f7f8;
+          --ff-muted: #4d6168;
+          --ff-backdrop: rgb(10 25 35 / .55);
+          font-family: system-ui, sans-serif;
+          color: var(--ff-text);
+          color-scheme: light;
+        }
+        :host([color-scheme="dark"]) {
+          --ff-text: #e7eef0;
+          --ff-surface: #121a1e;
+          --ff-header-border: #2a3a40;
+          --ff-dialog-border: #2a3a40;
+          --ff-close-bg: #1c2830;
+          --ff-muted: #a8b6bb;
+          --ff-backdrop: #02060c99;
+          color-scheme: dark;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        button { font: inherit; cursor: pointer; }
+        button:focus-visible { outline: 3px solid #cb710b; outline-offset: 3px; }
+        button:disabled { cursor: not-allowed; opacity: .6; }
+        #open, #retry {
+          border: 1px solid var(--ff-accent);
+          border-radius: 8px;
+          padding: .65rem 1rem;
+          background: var(--ff-accent);
+          color: white;
+        }
+        #open:hover, #retry:hover { filter: brightness(0.88); }
+        dialog {
+          width: 640px;
+          max-width: calc(100vw - 32px);
+          max-height: calc(100dvh - 32px);
+          padding: 0;
+          border: 1px solid var(--ff-dialog-border);
+          border-radius: 12px;
+          background: var(--ff-surface);
+          color: inherit;
+          overflow: auto;
+        }
+        dialog::backdrop { background: var(--ff-backdrop); }
+        .contents { display: flex; flex-direction: column; min-height: 0; }
+        header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 16px;
+          border-bottom: 1px solid var(--ff-header-border);
+        }
+        h2 { margin: 0; font-size: 1.15rem; }
+        #close {
+          border: 1px solid var(--ff-dialog-border);
+          border-radius: 8px;
+          padding: .4rem .7rem;
+          background: var(--ff-close-bg);
+          color: var(--ff-text);
+        }
+        iframe {
+          display: block;
+          width: 100%;
+          height: 320px;
+          min-height: ${minFrameHeight}px;
+          border: 0;
+          background: var(--ff-surface);
+          overflow: hidden;
+        }
+        [role=status], [role=alert] { margin: 16px; line-height: 1.5; }
+        [role=status] { color: var(--ff-muted); }
+        #retry { align-self: flex-start; margin: 0 16px 16px; }
+        [hidden] { display: none !important; }
+        .focus-guard { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
       </style>
       <button id="open" type="button">Request Feature</button>
       <p id="configuration-error" role="alert" hidden></p>
       <dialog aria-labelledby="heading">
         <div class="contents">
-          <header><h2 id="heading">Request a feature</h2><button id="close" type="button" aria-label="Close request form">Close</button></header>
+          <header><h2 id="heading">Request a feature</h2><button id="close" type="button">Close</button></header>
           <p role="status" hidden></p>
           <p id="error" role="alert" hidden></p>
           <button id="retry" type="button" hidden>Try again</button>
@@ -107,19 +193,27 @@ class FeatureFountain extends HTMLElement {
       </dialog>`;
     this.button = this.root.querySelector<HTMLButtonElement>("#open")!;
     this.dialog = this.root.querySelector<HTMLDialogElement>("dialog")!;
+    this.closeButton = this.root.querySelector<HTMLButtonElement>("#close")!;
+    this.heading = this.root.querySelector<HTMLHeadingElement>("h2")!;
     this.status = this.root.querySelector<HTMLElement>("[role=status]")!;
     this.error = this.root.querySelector<HTMLElement>("#error")!;
     this.retry = this.root.querySelector<HTMLButtonElement>("#retry")!;
     this.button.addEventListener("click", () => {
+      if (this.status.textContent === submittedStatus) {
+        this.status.textContent = "";
+        this.status.hidden = true;
+      }
       this.dialog.showModal();
       if (!this.frame && !this.request) void this.loadSession();
     });
-    this.root
-      .querySelector("#close")!
-      .addEventListener("click", () => this.dialog.close());
+    this.closeButton.addEventListener("click", () => this.dialog.close());
+    this.closeButton.addEventListener("keydown", this.reverseTab);
     this.dialog.addEventListener("cancel", (event) => {
       event.preventDefault();
       this.dialog.close();
+    });
+    this.dialog.addEventListener("click", (event) => {
+      if (event.target === this.dialog) this.dialog.close();
     });
     this.dialog.addEventListener("close", () => this.button.focus());
     this.retry.addEventListener("click", () => void this.loadSession());
@@ -127,6 +221,7 @@ class FeatureFountain extends HTMLElement {
 
   connectedCallback(): void {
     window.addEventListener("message", this.receiveMessage);
+    this.applyTheme();
     if (this.initialized) return;
     this.initialized = true;
     try {
@@ -148,31 +243,102 @@ class FeatureFountain extends HTMLElement {
     clearTimeout(this.frameTimeout);
   }
 
+  attributeChangedCallback(): void {
+    if (!this.isConnected) return;
+    this.applyTheme();
+    this.postTheme();
+  }
+
+  private applyTheme(): void {
+    this.theme = themeFromAttributes((name) => this.getAttribute(name));
+    this.button.textContent = this.theme.labels.trigger;
+    this.heading.textContent = this.theme.labels.title;
+    this.closeButton.textContent = this.theme.labels.close;
+    if (this.frame) this.frame.title = this.theme.labels.title;
+    this.style.setProperty("--ff-accent", this.theme.accent);
+  }
+
   private readonly receiveMessage = (event: MessageEvent): void => {
     if (
       !this.config ||
-      !this.frame ||
-      event.origin !== this.config.origin ||
-      event.source !== this.frame.contentWindow
+      !isEmbedMessageSource(
+        event.origin,
+        event.source,
+        this.config.origin,
+        this.frame?.contentWindow ?? null,
+      )
     )
       return;
-    const message: unknown = event.data;
-    if (
-      !message ||
-      typeof message !== "object" ||
-      Array.isArray(message) ||
-      Object.keys(message).length !== 1 ||
-      !("type" in message)
-    )
+    const unsupported = unsupportedProtocol(event.data);
+    if (unsupported !== null) {
+      this.noteUnsupportedProtocol(unsupported);
       return;
-    if (message.type === "featurefountain:ready") {
-      this.ready = true;
-      clearTimeout(this.frameTimeout);
-      this.status.hidden = true;
-    } else if (message.type === "featurefountain:close") {
+    }
+    const message = parseHostMessage(event.data);
+    if (!message) return;
+    if (message.kind === "legacy-ready" || message.kind === "ready") {
+      this.markReady();
+      if (message.kind === "ready") {
+        this.protocolReady = true;
+        this.postToFrame(handshakeMessage());
+        this.postTheme();
+      }
+      return;
+    }
+    if (message.kind === "legacy-close" || message.kind === "close-request") {
       this.dialog.close();
-    } else if (message.type === "featurefountain:refresh" && this.ready) {
+      return;
+    }
+    if (message.kind === "resize" && this.frame) {
+      this.frame.style.height = `${message.height}px`;
+      return;
+    }
+    if (message.kind === "submitted") {
+      this.status.textContent = submittedStatus;
+      this.status.hidden = false;
+      return;
+    }
+    if (message.kind === "legacy-refresh" && this.ready)
       void this.loadSession();
+  };
+
+  private markReady(): void {
+    this.ready = true;
+    clearTimeout(this.frameTimeout);
+    this.status.hidden = true;
+  }
+
+  private noteUnsupportedProtocol(version: number): void {
+    if (this.seenProtocols.has(version)) return;
+    this.seenProtocols.add(version);
+    console.debug(
+      `FeatureFountain ignored embed protocol ${version}; this SDK speaks protocol ${protocolVersion}.`,
+    );
+  }
+
+  private postToFrame(message: object): void {
+    if (!this.config || !this.frame?.contentWindow) return;
+    this.frame.contentWindow.postMessage(message, this.config.origin);
+  }
+
+  private postTheme(): void {
+    if (!this.protocolReady || this.themeQueued) return;
+    this.themeQueued = true;
+    queueMicrotask(() => {
+      this.themeQueued = false;
+      if (!this.protocolReady) return;
+      this.postToFrame(themeMessage(this.theme));
+    });
+  }
+
+  private reverseTab = (event: KeyboardEvent): void => {
+    if (event.key === "Tab" && event.shiftKey && this.frame) {
+      event.preventDefault();
+      const frame = this.frame;
+      window.requestAnimationFrame(() => {
+        if (this.dialog.open && this.frame === frame)
+          frame.contentWindow?.focus();
+      });
     }
   };
 
@@ -189,7 +355,7 @@ class FeatureFountain extends HTMLElement {
     const requestTimeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetch(
-        `${this.config.origin}/api/v1/projects/${this.config.projectId}/embed-sessions`,
+        `${this.config.origin}/api/v1/projects/${encodeURIComponent(this.config.projectId)}/embed-sessions`,
         {
           method: "POST",
           credentials: "omit",
@@ -214,17 +380,22 @@ class FeatureFountain extends HTMLElement {
         this.status.hidden = true;
       } else {
         this.frame = document.createElement("iframe");
-        this.frame.title = "Feature request form";
+        this.frame.title = this.theme.labels.title;
         this.frame.referrerPolicy = "no-referrer";
+        this.frame.setAttribute("scrolling", "no");
         this.frame.setAttribute(
           "sandbox",
           "allow-scripts allow-forms allow-same-origin",
         );
-        this.frame.src = session.embedUrl;
+        this.frame.src = withEmbedFlag(session.embedUrl, this.config.projectId);
         this.dialog.querySelector(".contents")!.append(this.frame);
+        this.installFocusGuard();
         this.frameTimeout = setTimeout(() => {
           this.frame?.remove();
           this.frame = undefined;
+          this.ready = false;
+          this.protocolReady = false;
+          this.themeQueued = false;
           this.showError();
         }, timeoutMs);
       }
@@ -234,6 +405,15 @@ class FeatureFountain extends HTMLElement {
       clearTimeout(requestTimeout);
       this.request = undefined;
     }
+  }
+
+  private installFocusGuard(): void {
+    if (this.dialog.querySelector(".focus-guard")) return;
+    const guard = this.ownerDocument.createElement("span");
+    guard.className = "focus-guard";
+    guard.tabIndex = 0;
+    guard.addEventListener("focus", () => this.closeButton.focus());
+    this.dialog.append(guard);
   }
 
   private showError(): void {
