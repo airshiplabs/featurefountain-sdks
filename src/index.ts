@@ -279,17 +279,15 @@ class FeatureFountain extends HTMLElement {
     }
     const message = parseHostMessage(event.data);
     if (!message) return;
-    if (message.kind === "legacy-ready" || message.kind === "ready") {
+    if (message.kind === "ready") {
       this.markReady();
-      if (message.kind === "ready") {
-        this.protocolReady = true;
-        this.postToFrame(handshakeMessage());
-        this.postTheme();
-        this.flushPendingHeight();
-      }
+      this.protocolReady = true;
+      this.postToFrame(handshakeMessage());
+      this.postTheme();
+      this.flushPendingHeight();
       return;
     }
-    if (message.kind === "legacy-close" || message.kind === "close-request") {
+    if (message.kind === "close-request") {
       this.dialog.close();
       return;
     }
@@ -304,10 +302,7 @@ class FeatureFountain extends HTMLElement {
     if (message.kind === "submitted") {
       this.status.textContent = submittedStatus;
       this.status.hidden = false;
-      return;
     }
-    if (message.kind === "legacy-refresh" && this.ready)
-      void this.loadSession();
   };
 
   private applyFrameHeight(height: number): void {
@@ -366,9 +361,7 @@ class FeatureFountain extends HTMLElement {
     if (!this.config || this.request) return;
     this.error.hidden = true;
     this.retry.hidden = true;
-    this.status.textContent = this.ready
-      ? "Refreshing form session…"
-      : "Loading feature request form…";
+    this.status.textContent = "Loading feature request form…";
     this.status.hidden = false;
     const controller = new AbortController();
     this.request = controller;
@@ -387,39 +380,27 @@ class FeatureFountain extends HTMLElement {
       );
       if (!response.ok) throw new Error("Session request failed.");
       const session = embedSession(await response.json(), this.config);
-      if (!this.isConnected || controller.signal.aborted) return;
-      if (this.frame && this.ready) {
-        this.frame.contentWindow?.postMessage(
-          {
-            type: "featurefountain:session",
-            token: session.token,
-            expiresAt: session.expiresAt,
-          },
-          this.config.origin,
-        );
-        this.status.hidden = true;
-      } else {
-        this.frame = document.createElement("iframe");
-        this.frame.title = this.theme.labels.title;
-        this.frame.referrerPolicy = "no-referrer";
-        this.frame.setAttribute("scrolling", "no");
-        this.frame.setAttribute(
-          "sandbox",
-          "allow-scripts allow-forms allow-same-origin",
-        );
-        this.frame.src = withEmbedFlag(session.embedUrl, this.config.projectId);
-        this.dialog.querySelector(".contents")!.append(this.frame);
-        this.installFocusGuard();
-        this.frameTimeout = setTimeout(() => {
-          this.frame?.remove();
-          this.frame = undefined;
-          this.ready = false;
-          this.protocolReady = false;
-          this.themeQueued = false;
-          this.pendingHeight = undefined;
-          this.showError();
-        }, timeoutMs);
-      }
+      if (!this.isConnected || controller.signal.aborted || this.frame) return;
+      this.frame = document.createElement("iframe");
+      this.frame.title = this.theme.labels.title;
+      this.frame.referrerPolicy = "no-referrer";
+      this.frame.setAttribute("scrolling", "no");
+      this.frame.setAttribute(
+        "sandbox",
+        "allow-scripts allow-forms allow-same-origin",
+      );
+      this.frame.src = withEmbedFlag(session.embedUrl, this.config.projectId);
+      this.dialog.querySelector(".contents")!.append(this.frame);
+      this.installFocusGuard();
+      this.frameTimeout = setTimeout(() => {
+        this.frame?.remove();
+        this.frame = undefined;
+        this.ready = false;
+        this.protocolReady = false;
+        this.themeQueued = false;
+        this.pendingHeight = undefined;
+        this.showError();
+      }, timeoutMs);
     } catch {
       if (this.isConnected) this.showError();
     } finally {

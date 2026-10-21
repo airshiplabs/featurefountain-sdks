@@ -102,7 +102,7 @@ Form to parent:
 
 Import the types and parser from `@featurefountain/browser/protocol` (`protocolVersion`, `minFrameHeight`, `maxFrameHeight`, `labelMax`, `parseHostMessage`). The JSON vectors live in `tests/fixtures/embed-protocol.json`. CI checks that file against the SHA-256 in `tests/fixtures/embed-protocol.json.sha256`.
 
-Legacy 0.1.0 messages still work. The form sends `{ "type": "featurefountain:ready" }`, `{ "type": "featurefountain:close" }`, and `{ "type": "featurefountain:refresh" }`. Those are removed in 0.3.0. A form that does not receive `embed=1` and `handshake` keeps its own close button.
+0.2.0 replaces 0.1.0 embeds. There is no compatibility with `{ "type": "featurefountain:ready" }`, `{ "type": "featurefountain:close" }`, `{ "type": "featurefountain:refresh" }`, or `{ "type": "featurefountain:session" }`. The hosted form hides its own close button after it receives `handshake`.
 
 ## Links
 

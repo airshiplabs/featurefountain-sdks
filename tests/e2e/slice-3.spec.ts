@@ -269,10 +269,15 @@ for (const invalidMessage of [
   });
 }
 
-test("refresh sends the new session to the existing frame without losing text", async ({
+test("a 0.1.0 refresh message does not replace the form", async ({
   page,
   widgetSite,
 }) => {
+  const sessions: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().includes("embed-sessions"))
+      sessions.push(request.url());
+  });
   await page.goto(widgetSite.hostOrigin);
   await expect(
     page.getByRole("button", { name: "Request Feature", exact: true }),
@@ -284,17 +289,7 @@ test("refresh sends the new session to the existing frame without losing text", 
   await form
     .getByLabel("Title", { exact: true })
     .fill("Preserved during refresh");
-  await page.route(
-    `${widgetSite.formOrigin}/api/v1/projects/*/embed-sessions`,
-    (route) =>
-      route.fulfill({
-        status: 201,
-        json: {
-          embedUrl: `${widgetSite.formOrigin}/embed/${widgetSite.projectId}?token=refreshed-public-token`,
-          expiresAt: "2026-09-04T12:20:00Z",
-        },
-      }),
-  );
+  await expect(form.locator("#session")).toContainText('"type":"handshake"');
   await form
     .locator("body")
     .evaluate(
@@ -302,12 +297,8 @@ test("refresh sends the new session to the existing frame without losing text", 
         parent.postMessage({ type: "featurefountain:refresh" }, hostOrigin),
       widgetSite.hostOrigin,
     );
-  await expect(form.locator("#session")).toHaveText(
-    JSON.stringify({
-      type: "featurefountain:session",
-      token: "refreshed-public-token",
-      expiresAt: "2026-09-04T12:20:00Z",
-    }),
+  await expect(form.locator("#session")).not.toContainText(
+    "featurefountain:session",
   );
   await expect(form.getByLabel("Title", { exact: true })).toHaveValue(
     "Preserved during refresh",
@@ -316,6 +307,7 @@ test("refresh sends the new session to the existing frame without losing text", 
     "src",
     `${widgetSite.formOrigin}/embed/${widgetSite.projectId}?token=public-test-token&embed=1`,
   );
+  expect(sessions).toHaveLength(1);
 });
 
 test("a session error permits a deliberate retry", async ({

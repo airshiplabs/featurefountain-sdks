@@ -93,12 +93,16 @@ test("featurefountain rows in the shared protocol vectors", () => {
       source: "featurefountain",
     }),
   ).toBe(2);
-  expect(parseHostMessage({ type: "featurefountain:ready" })).toEqual({
-    kind: "legacy-ready",
-  });
-  expect(parseHostMessage({ type: "featurefountain:refresh" })).toEqual({
-    kind: "legacy-refresh",
-  });
+  expect(parseHostMessage({ type: "featurefountain:ready" })).toBeNull();
+  expect(parseHostMessage({ type: "featurefountain:close" })).toBeNull();
+  expect(parseHostMessage({ type: "featurefountain:refresh" })).toBeNull();
+  expect(
+    parseHostMessage({
+      type: "featurefountain:session",
+      token: "token",
+      expiresAt: "2030-01-01T00:00:00.000Z",
+    }),
+  ).toBeNull();
   expect(labelMax).toBe(60);
   expect(maxFrameHeight).toBe(4096);
 });

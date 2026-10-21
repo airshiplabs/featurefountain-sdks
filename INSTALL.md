@@ -188,13 +188,11 @@ Never put GitHub tokens, private project identifiers, or service secrets in the 
 
 `POST {api-base}/api/v1/projects/{project-id}/embed-sessions` with body `{}`, `credentials: "omit"`, and `Content-Type: application/json`.
 
-The iframe loads `{api-base}/embed/{encodeURIComponent(project-id)}?token=...&embed=1` with `sandbox="allow-scripts allow-forms allow-same-origin"`, `referrerpolicy="no-referrer"`, and `scrolling="no"`. The SDK adds `embed=1` after it checks the session. `embed=1` plus the handshake tells the hosted form to hide its own close button. A 0.1.0 embed without those signals stays in legacy mode.
+The iframe loads `{api-base}/embed/{encodeURIComponent(project-id)}?token=...&embed=1` with `sandbox="allow-scripts allow-forms allow-same-origin"`, `referrerpolicy="no-referrer"`, and `scrolling="no"`. The SDK adds `embed=1` after it checks the session. `embed=1` plus the handshake tells the hosted form to hide its own close button. 0.2.0 replaces 0.1.0 embeds and does not accept the old message names.
 
 Theme values are sent in a `theme` message after the form sends `ready`. They are not placed in the embed URL. Plan limits are enforced by the hosted form, not by this package.
 
 Protocol 1 messages are plain objects. Messages with extra keys are rejected. The form sends `ready`, `resize` (`height` integer 1–4096), `close-request`, and `submitted`. The SDK raises the iframe to at least 100px. A `resize` before `ready` waits until the handshake is sent. After `ready`, the SDK sends `handshake` (`embed: true`) and then `theme` (`accent`, `colorScheme`, `labels`). The handshake `protocol` number is the highest version the page speaks. Higher versions are ignored. See [README](README.md) for the JSON shapes. Types and `parseHostMessage` are exported from `@featurefountain/browser/protocol`.
-
-Legacy 0.1.0 messages still work: `featurefountain:ready`, `featurefountain:close`, and `featurefountain:refresh`. They are removed in 0.3.0. The refresh reply is still `{ "type": "featurefountain:session", "token", "expiresAt" }`.
 
 There are no other public attributes, properties, or JavaScript APIs on the element.
 

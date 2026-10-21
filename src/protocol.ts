@@ -31,9 +31,6 @@ export const defaultTheme: Theme = {
 };
 
 export type HostMessage =
-  | { kind: "legacy-ready" }
-  | { kind: "legacy-close" }
-  | { kind: "legacy-refresh" }
   | { kind: "ready" }
   | { kind: "resize"; height: number }
   | { kind: "close-request" }
@@ -218,22 +215,6 @@ export function parseHostMessage(data: unknown): HostMessage | null {
   const message = plainRecord(data);
   if (!message) return null;
   const keys = Object.keys(message);
-  if (keys.length === 1) {
-    if (message.type === "featurefountain:ready")
-      return { kind: "legacy-ready" };
-    if (message.type === "featurefountain:close")
-      return { kind: "legacy-close" };
-    if (message.type === "featurefountain:refresh")
-      return { kind: "legacy-refresh" };
-    return null;
-  }
-  if (keys.length === 2 && message.version === 1) {
-    if (message.type === "featurefountain:ready")
-      return { kind: "legacy-ready" };
-    if (message.type === "featurefountain:close")
-      return { kind: "legacy-close" };
-    return null;
-  }
   if (message.source !== messageSource || message.protocol !== protocolVersion)
     return null;
   if (
