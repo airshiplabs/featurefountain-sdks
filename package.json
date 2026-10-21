@@ -24,6 +24,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./protocol": {
+      "types": "./dist/protocol.d.ts",
+      "import": "./dist/protocol.js"
     }
   },
   "publishConfig": {
@@ -35,6 +39,7 @@
     "prepack": "npm run build",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "check:vectors": "node scripts/check-embed-vectors.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",

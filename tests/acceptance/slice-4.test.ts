@@ -20,8 +20,10 @@ test("clean_checkout_builds_secret_free_public_package", async () => {
   expect(built.files).toEqual(
     expect.arrayContaining([
       "package/dist/index.js",
+      "package/dist/protocol.js",
       "package/dist/widget.js",
       "package/dist/index.d.ts",
+      "package/dist/protocol.d.ts",
       "package/package.json",
       "package/README.md",
       "package/LICENSE",

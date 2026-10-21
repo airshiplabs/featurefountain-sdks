@@ -16,6 +16,108 @@ Install FeatureFountain by following https://github.com/airshiplabs/featurefount
 
 You need a GitHub Project you can edit. Your users do not need GitHub accounts.
 
+## Theming
+
+Set these optional attributes on `<feature-fountain>`. Defaults match FeatureFountain branding. The widget sends them to the hosted form after the form reports ready. It does not check your plan. The server decides which theme values to apply.
+
+| Attribute      | Default             | What it changes                                     |
+| -------------- | ------------------- | --------------------------------------------------- |
+| `label`        | `Request Feature`   | Trigger button text                                 |
+| `heading`      | `Request a feature` | Dialog title                                        |
+| `close-label`  | `Close`             | The dialog's Close button                           |
+| `submit-label` | `Submit request`    | Submit button inside the hosted form                |
+| `accent`       | `#1c5060`           | Trigger color and form accent. Use a `#rrggbb` hex  |
+| `color-scheme` | `light`             | `light` or `dark` for the dialog shell and the form |
+
+```html
+<feature-fountain
+  project-id="00000000-0000-4000-8000-000000000000"
+  api-base="https://featurefountain.ai"
+  color-scheme="dark"
+  accent="#112233"
+  label="Suggest a feature"
+></feature-fountain>
+```
+
+Theme values are not put in the embed URL.
+
+## Embed protocol
+
+The dialog shell (overlay, the only Close button, Escape, focus trap, and backdrop click) lives in this SDK. Close works even when the iframe never loads. The iframe URL is the session URL plus `embed=1`. The project id in that path is encoded with `encodeURIComponent`.
+
+`api-base` must be HTTPS. HTTP is allowed only on loopback (`localhost`, `127.0.0.1`, or `[::1]`).
+
+Messages use `postMessage` and are accepted only from the iframe window on the `api-base` origin. A sibling frame on that same origin is ignored. Each message is a plain object. Messages with extra keys are rejected. Unknown protocol numbers are ignored. The SDK writes one `console.debug` line the first time it sees a higher version.
+
+The handshake `protocol` number is the highest version the page speaks. The form should answer with that version or lower.
+
+Parent to form, after the form sends `ready`:
+
+```json
+{
+  "source": "featurefountain",
+  "protocol": 1,
+  "type": "handshake",
+  "embed": true
+}
+```
+
+```json
+{
+  "source": "featurefountain",
+  "protocol": 1,
+  "type": "theme",
+  "accent": "#1c5060",
+  "colorScheme": "light",
+  "labels": {
+    "trigger": "Request Feature",
+    "title": "Request a feature",
+    "close": "Close",
+    "submit": "Submit request"
+  }
+}
+```
+
+Form to parent:
+
+```json
+{ "source": "featurefountain", "protocol": 1, "type": "ready" }
+```
+
+```json
+{ "source": "featurefountain", "protocol": 1, "type": "resize", "height": 480 }
+```
+
+`height` is an integer from 1 to 4096. The SDK raises the applied iframe height to at least 100px, matching the CSS minimum. A `resize` that arrives before `ready` is held until the handshake has been sent. The iframe does not scroll itself.
+
+```json
+{ "source": "featurefountain", "protocol": 1, "type": "close-request" }
+```
+
+```json
+{ "source": "featurefountain", "protocol": 1, "type": "submitted" }
+```
+
+```json
+{ "source": "featurefountain", "protocol": 1, "type": "refresh-request" }
+```
+
+`submitted` leaves the dialog open and sets the status text to "Request submitted." After the handshake, `refresh-request` makes the SDK fetch a new embed session and reply with `session`. The reply uses `postMessage` and the endpoint origin as `targetOrigin`.
+
+```json
+{
+  "source": "featurefountain",
+  "protocol": 1,
+  "type": "session",
+  "token": "public-token",
+  "expiresAt": "2026-09-04T12:10:00.000Z"
+}
+```
+
+Import the types and parser from `@featurefountain/browser/protocol` (`protocolVersion`, `minFrameHeight`, `maxFrameHeight`, `labelMax`, `parseHostMessage`). The JSON vectors live in `tests/fixtures/embed-protocol.json`. CI checks that file against the SHA-256 in `tests/fixtures/embed-protocol.json.sha256`.
+
+0.2.0 replaces 0.1.0 embeds. There is no compatibility with `{ "type": "featurefountain:ready" }`, `{ "type": "featurefountain:close" }`, `{ "type": "featurefountain:refresh" }`, or `{ "type": "featurefountain:session" }`. The hosted form hides its own close button after it receives `handshake`.
+
 ## Links
 
 - [featurefountain.ai](https://featurefountain.ai)

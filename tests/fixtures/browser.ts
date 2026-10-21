@@ -76,7 +76,7 @@ export const test = base.extend<{ hostOrigin: string; widgetSite: WidgetSite }>(
         }
         response.setHeader("Content-Type", "text/html; charset=utf-8");
         response.end(
-          `<!doctype html><html lang="en"><head><title>Feature request form</title></head><body><form><label for="title">Title</label><input id="title" autofocus><label for="description">Description</label><textarea id="description"></textarea><button>Submit request</button></form><output id="session"></output><script>addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();parent.postMessage({type:'featurefountain:close'},${JSON.stringify(hostOrigin)});}});addEventListener('message',event=>{if(event.origin===${JSON.stringify(hostOrigin)}&&event.source===parent){document.querySelector('#session').textContent=JSON.stringify(event.data);}});document.querySelector('#title').focus();parent.postMessage({type:'featurefountain:ready'},${JSON.stringify(hostOrigin)});</script></body></html>`,
+          `<!doctype html><html lang="en"><head><title>Feature request form</title></head><body><form><label for="title">Title</label><input id="title" autofocus><label for="description">Description</label><textarea id="description"></textarea><button>Submit request</button></form><output id="session"></output><script>addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();parent.postMessage({source:'featurefountain',protocol:1,type:'close-request'},${JSON.stringify(hostOrigin)});}});const seen=[];addEventListener('message',event=>{if(event.origin===${JSON.stringify(hostOrigin)}&&event.source===parent){seen.push(event.data);document.querySelector('#session').textContent=JSON.stringify(seen);}});document.querySelector('#title').focus();parent.postMessage({source:'featurefountain',protocol:1,type:'ready'},${JSON.stringify(hostOrigin)});</script></body></html>`,
         );
       });
       const hostServer = createServer(async (request, response) => {
@@ -88,6 +88,13 @@ export const test = base.extend<{ hostOrigin: string; widgetSite: WidgetSite }>(
           response.setHeader("Content-Type", "application/javascript");
           response.end(
             await readFile(new URL("../../dist/index.js", import.meta.url)),
+          );
+          return;
+        }
+        if (url.pathname === "/protocol.js") {
+          response.setHeader("Content-Type", "application/javascript");
+          response.end(
+            await readFile(new URL("../../dist/protocol.js", import.meta.url)),
           );
           return;
         }

@@ -16,7 +16,7 @@ test("keyboard_user_opens_and_dismisses_hosted_form", async ({
   await expect(
     page.getByRole("dialog", { name: "Request a feature", exact: true }),
   ).toBeVisible();
-  const form = page.frameLocator('iframe[title="Feature request form"]');
+  const form = page.frameLocator('iframe[title="Request a feature"]');
   await expect(form.getByLabel("Title", { exact: true })).toBeFocused();
   await page.keyboard.type("Keyboard shortcuts");
   await expect(form.getByLabel("Title", { exact: true })).toHaveValue(
@@ -154,7 +154,7 @@ test("the hosted frame has its accessibility and privacy attributes", async ({
   await page
     .getByRole("button", { name: "Request Feature", exact: true })
     .click();
-  const frame = page.locator('iframe[title="Feature request form"]');
+  const frame = page.locator('iframe[title="Request a feature"]');
   await expect(frame).toHaveAttribute("referrerpolicy", "no-referrer");
   await expect(frame).toHaveAttribute(
     "sandbox",
@@ -178,7 +178,7 @@ test("closing and reopening preserves form text and returns focus", async ({
   await expect(button).toBeVisible();
   await button.click();
   const title = page
-    .frameLocator('iframe[title="Feature request form"]')
+    .frameLocator('iframe[title="Request a feature"]')
     .getByLabel("Title", { exact: true });
   await title.fill("Keep these words");
   await page.getByRole("button", { name: /close/i }).click();
@@ -269,10 +269,15 @@ for (const invalidMessage of [
   });
 }
 
-test("refresh sends the new session to the existing frame without losing text", async ({
+test("a 0.1.0 refresh message does not replace the form", async ({
   page,
   widgetSite,
 }) => {
+  const sessions: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().includes("embed-sessions"))
+      sessions.push(request.url());
+  });
   await page.goto(widgetSite.hostOrigin);
   await expect(
     page.getByRole("button", { name: "Request Feature", exact: true }),
@@ -284,17 +289,7 @@ test("refresh sends the new session to the existing frame without losing text", 
   await form
     .getByLabel("Title", { exact: true })
     .fill("Preserved during refresh");
-  await page.route(
-    `${widgetSite.formOrigin}/api/v1/projects/*/embed-sessions`,
-    (route) =>
-      route.fulfill({
-        status: 201,
-        json: {
-          embedUrl: `${widgetSite.formOrigin}/embed/${widgetSite.projectId}?token=refreshed-public-token`,
-          expiresAt: "2026-09-04T12:20:00Z",
-        },
-      }),
-  );
+  await expect(form.locator("#session")).toContainText('"type":"handshake"');
   await form
     .locator("body")
     .evaluate(
@@ -302,20 +297,17 @@ test("refresh sends the new session to the existing frame without losing text", 
         parent.postMessage({ type: "featurefountain:refresh" }, hostOrigin),
       widgetSite.hostOrigin,
     );
-  await expect(form.locator("#session")).toHaveText(
-    JSON.stringify({
-      type: "featurefountain:session",
-      token: "refreshed-public-token",
-      expiresAt: "2026-09-04T12:20:00Z",
-    }),
+  await expect(form.locator("#session")).not.toContainText(
+    "featurefountain:session",
   );
   await expect(form.getByLabel("Title", { exact: true })).toHaveValue(
     "Preserved during refresh",
   );
   await expect(page.locator("iframe")).toHaveAttribute(
     "src",
-    `${widgetSite.formOrigin}/embed/${widgetSite.projectId}?token=public-test-token`,
+    `${widgetSite.formOrigin}/embed/${widgetSite.projectId}?token=public-test-token&embed=1`,
   );
+  expect(sessions).toHaveLength(1);
 });
 
 test("a session error permits a deliberate retry", async ({

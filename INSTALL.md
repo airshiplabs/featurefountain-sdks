@@ -166,10 +166,16 @@ Import in `onMount` or a `+layout`/`+page` that runs only in the browser:
 
 The element supports **only** these HTML attributes (see `src/index.ts` in this repository):
 
-| Attribute    | Required | Description                                                                                      |
-| ------------ | -------- | ------------------------------------------------------------------------------------------------ |
-| `project-id` | Yes      | Public project UUID. Must match RFC 4122 form (version nibble `1`–`8`, variant `8`/`9`/`a`/`b`). |
-| `api-base`   | No       | FeatureFountain service origin. Default: `https://featurefountain.ai`.                           |
+| Attribute      | Required | Description                                                                                      |
+| -------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `project-id`   | Yes      | Public project UUID. Must match RFC 4122 form (version nibble `1`–`8`, variant `8`/`9`/`a`/`b`). |
+| `api-base`     | No       | FeatureFountain service origin. Default: `https://featurefountain.ai`.                           |
+| `label`        | No       | Trigger text. Default `Request Feature`. 1–60 characters.                                        |
+| `heading`      | No       | Dialog title. Default `Request a feature`.                                                       |
+| `close-label`  | No       | The SDK Close button. Default `Close`. The dialog has one Close control.                         |
+| `submit-label` | No       | Submit label sent to the hosted form. Default `Submit request`.                                  |
+| `accent`       | No       | `#rrggbb` hex. Default `#1c5060`. Applied to the trigger and sent to the form.                   |
+| `color-scheme` | No       | `light` or `dark`. Default `light`.                                                              |
 
 `api-base` rules enforced in the widget:
 
@@ -182,7 +188,11 @@ Never put GitHub tokens, private project identifiers, or service secrets in the 
 
 `POST {api-base}/api/v1/projects/{project-id}/embed-sessions` with body `{}`, `credentials: "omit"`, and `Content-Type: application/json`.
 
-The iframe loads `{api-base}/embed/{project-id}?token=...` with `sandbox="allow-scripts allow-forms allow-same-origin"` and `referrerpolicy="no-referrer"`.
+The iframe loads `{api-base}/embed/{encodeURIComponent(project-id)}?token=...&embed=1` with `sandbox="allow-scripts allow-forms allow-same-origin"`, `referrerpolicy="no-referrer"`, and `scrolling="no"`. The SDK adds `embed=1` after it checks the session. `embed=1` plus the handshake tells the hosted form to hide its own close button. 0.2.0 replaces 0.1.0 embeds and does not accept the old message names.
+
+Theme values are sent in a `theme` message after the form sends `ready`. They are not placed in the embed URL. Plan limits are enforced by the hosted form, not by this package.
+
+Protocol 1 messages are plain objects. Messages with extra keys are rejected. The form sends `ready`, `resize` (`height` integer 1–4096), `close-request`, `submitted`, and, after the handshake, `refresh-request`. The SDK replies to `refresh-request` with `session` (`token` and an ISO 8601 `expiresAt`) using the endpoint origin as `targetOrigin`. The SDK raises the iframe to at least 100px. A `resize` before `ready` waits until the handshake is sent. After `ready`, the SDK sends `handshake` (`embed: true`) and then `theme` (`accent`, `colorScheme`, `labels`). The handshake `protocol` number is the highest version the page speaks. Higher versions are ignored. See [README](README.md) for the JSON shapes. Types and `parseHostMessage` are exported from `@featurefountain/browser/protocol`.
 
 There are no other public attributes, properties, or JavaScript APIs on the element.
 
