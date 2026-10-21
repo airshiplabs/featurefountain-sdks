@@ -4,6 +4,7 @@ import {
   embedPathname,
   handshakeMessage,
   isEmbedMessageSource,
+  sessionMessage,
   minFrameHeight,
   parseHostMessage,
   parseServiceOrigin,
@@ -302,7 +303,9 @@ class FeatureFountain extends HTMLElement {
     if (message.kind === "submitted") {
       this.status.textContent = submittedStatus;
       this.status.hidden = false;
+      return;
     }
+    if (message.kind === "refresh-request") void this.renewSession();
   };
 
   private applyFrameHeight(height: number): void {
@@ -357,6 +360,52 @@ class FeatureFountain extends HTMLElement {
     }
   };
 
+  private async fetchEmbedSession(signal: AbortSignal): Promise<EmbedSession> {
+    if (!this.config) throw new Error("Session request failed.");
+    const response = await fetch(
+      `${this.config.origin}/api/v1/projects/${encodeURIComponent(this.config.projectId)}/embed-sessions`,
+      {
+        method: "POST",
+        credentials: "omit",
+        redirect: "error",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+        signal,
+      },
+    );
+    if (!response.ok) throw new Error("Session request failed.");
+    return embedSession(await response.json(), this.config);
+  }
+
+  private async renewSession(): Promise<void> {
+    if (!this.config || !this.protocolReady || !this.frame || this.request)
+      return;
+    const controller = new AbortController();
+    this.request = controller;
+    const requestTimeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const session = await this.fetchEmbedSession(controller.signal);
+      if (
+        !this.isConnected ||
+        controller.signal.aborted ||
+        !this.protocolReady ||
+        !this.frame
+      )
+        return;
+      this.postToFrame(sessionMessage(session.token, session.expiresAt));
+    } catch (error) {
+      if (!this.isConnected) return;
+      const detail =
+        error instanceof Error ? error.message : "Session request failed.";
+      console.error(
+        `FeatureFountain could not renew the embed session: ${detail}`,
+      );
+    } finally {
+      clearTimeout(requestTimeout);
+      if (this.request === controller) this.request = undefined;
+    }
+  }
+
   private async loadSession(): Promise<void> {
     if (!this.config || this.request) return;
     this.error.hidden = true;
@@ -367,19 +416,7 @@ class FeatureFountain extends HTMLElement {
     this.request = controller;
     const requestTimeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const response = await fetch(
-        `${this.config.origin}/api/v1/projects/${encodeURIComponent(this.config.projectId)}/embed-sessions`,
-        {
-          method: "POST",
-          credentials: "omit",
-          redirect: "error",
-          headers: { "Content-Type": "application/json" },
-          body: "{}",
-          signal: controller.signal,
-        },
-      );
-      if (!response.ok) throw new Error("Session request failed.");
-      const session = embedSession(await response.json(), this.config);
+      const session = await this.fetchEmbedSession(controller.signal);
       if (!this.isConnected || controller.signal.aborted || this.frame) return;
       this.frame = document.createElement("iframe");
       this.frame.title = this.theme.labels.title;

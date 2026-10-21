@@ -299,6 +299,150 @@ test("resize before ready is held and short heights clamp to 100", async ({
   await expect(frame).toHaveJSProperty("style.height", "480px");
 });
 
+function renewDocument(host: string): string {
+  const target = JSON.stringify(host);
+  return `<!doctype html><body><pre id="seen"></pre><script>
+    const seen = [];
+    const target = ${target};
+    addEventListener("message", (event) => {
+      if (event.origin !== target || event.source !== parent) return;
+      seen.push({ data: event.data, origin: event.origin });
+      document.querySelector("#seen").textContent = JSON.stringify(seen);
+      if (event.data && event.data.type === "handshake") document.body.dataset.ready = "true";
+    });
+    parent.postMessage({ source: "featurefountain", protocol: 1, type: "ready" }, target);
+  </script></body>`;
+}
+
+test("refresh-request after handshake returns a session to the endpoint origin", async ({
+  page,
+  widgetSite,
+}) => {
+  await page.route(`${widgetSite.formOrigin}/embed/**`, (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: renewDocument(widgetSite.hostOrigin),
+    }),
+  );
+  let posts = 0;
+  await page.route(
+    `${widgetSite.formOrigin}/api/v1/projects/*/embed-sessions`,
+    async (route) => {
+      posts += 1;
+      if (posts === 1) {
+        await route.fallback();
+        return;
+      }
+      await route.fulfill({
+        status: 201,
+        json: {
+          embedUrl: `${widgetSite.formOrigin}/embed/${widgetSite.projectId}?token=renewed-public-token`,
+          expiresAt: "2026-09-04T12:20:00Z",
+        },
+      });
+    },
+  );
+  await page.goto(widgetSite.hostOrigin);
+  await page
+    .getByRole("button", { name: "Request Feature", exact: true })
+    .click();
+  const body = page
+    .frameLocator('iframe[title="Request a feature"]')
+    .locator("body");
+  await expect(body).toHaveAttribute("data-ready", "true");
+  await body.evaluate((_body, host: string) => {
+    parent.postMessage(
+      { source: "featurefountain", protocol: 1, type: "refresh-request" },
+      host,
+    );
+  }, widgetSite.hostOrigin);
+  await expect
+    .poll(() => seen(page))
+    .toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          origin: widgetSite.hostOrigin,
+          data: {
+            source: "featurefountain",
+            protocol: 1,
+            type: "session",
+            token: "renewed-public-token",
+            expiresAt: "2026-09-04T12:20:00.000Z",
+          },
+        }),
+      ]),
+    );
+});
+
+test("a failed refresh-request logs an error and sends no session", async ({
+  page,
+  widgetSite,
+}) => {
+  const errors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  await page.route(`${widgetSite.formOrigin}/embed/**`, (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: renewDocument(widgetSite.hostOrigin),
+    }),
+  );
+  let posts = 0;
+  await page.route(
+    `${widgetSite.formOrigin}/api/v1/projects/*/embed-sessions`,
+    async (route) => {
+      posts += 1;
+      if (posts === 1) {
+        await route.fallback();
+        return;
+      }
+      await route.fulfill({
+        status: 503,
+        json: {
+          error: { code: "unavailable", message: "private-renew-canary" },
+        },
+      });
+    },
+  );
+  await page.goto(widgetSite.hostOrigin);
+  await page
+    .getByRole("button", { name: "Request Feature", exact: true })
+    .click();
+  const body = page
+    .frameLocator('iframe[title="Request a feature"]')
+    .locator("body");
+  await expect(body).toHaveAttribute("data-ready", "true");
+  await body.evaluate((_body, host: string) => {
+    parent.postMessage(
+      {
+        source: "featurefountain",
+        protocol: 1,
+        type: "refresh-request",
+        extra: true,
+      },
+      host,
+    );
+    parent.postMessage(
+      { source: "featurefountain", protocol: 1, type: "refresh-request" },
+      host,
+    );
+  }, widgetSite.hostOrigin);
+  await expect
+    .poll(() => errors.some((line) => line.includes("could not renew")))
+    .toBe(true);
+  const recorded = await seen(page);
+  expect(recorded).not.toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        data: expect.objectContaining({ type: "session" }),
+      }),
+    ]),
+  );
+  expect(errors.join("\n")).not.toContain("private-renew-canary");
+  await expect(page.getByRole("dialog")).toBeVisible();
+});
+
 test("the shell closes when the iframe never loads", async ({
   page,
   widgetSite,

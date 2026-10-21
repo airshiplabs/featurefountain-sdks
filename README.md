@@ -98,7 +98,21 @@ Form to parent:
 { "source": "featurefountain", "protocol": 1, "type": "submitted" }
 ```
 
-`submitted` leaves the dialog open and sets the status text to "Request submitted."
+```json
+{ "source": "featurefountain", "protocol": 1, "type": "refresh-request" }
+```
+
+`submitted` leaves the dialog open and sets the status text to "Request submitted." After the handshake, `refresh-request` makes the SDK fetch a new embed session and reply with `session`. The reply uses `postMessage` and the endpoint origin as `targetOrigin`.
+
+```json
+{
+  "source": "featurefountain",
+  "protocol": 1,
+  "type": "session",
+  "token": "public-token",
+  "expiresAt": "2026-09-04T12:10:00.000Z"
+}
+```
 
 Import the types and parser from `@featurefountain/browser/protocol` (`protocolVersion`, `minFrameHeight`, `maxFrameHeight`, `labelMax`, `parseHostMessage`). The JSON vectors live in `tests/fixtures/embed-protocol.json`. CI checks that file against the SHA-256 in `tests/fixtures/embed-protocol.json.sha256`.
 

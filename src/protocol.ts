@@ -34,7 +34,8 @@ export type HostMessage =
   | { kind: "ready" }
   | { kind: "resize"; height: number }
   | { kind: "close-request" }
-  | { kind: "submitted" };
+  | { kind: "submitted" }
+  | { kind: "refresh-request" };
 
 const accentPattern = /^#[0-9a-f]{6}$/i;
 
@@ -159,6 +160,28 @@ export function handshakeMessage(): {
   };
 }
 
+export function sessionMessage(
+  token: string,
+  expiresAt: string,
+): {
+  source: typeof messageSource;
+  protocol: typeof protocolVersion;
+  type: "session";
+  token: string;
+  expiresAt: string;
+} {
+  const parsed = Date.parse(expiresAt);
+  if (token.length === 0 || !Number.isFinite(parsed))
+    throw new Error("Invalid embed session.");
+  return {
+    source: messageSource,
+    protocol: protocolVersion,
+    type: "session",
+    token,
+    expiresAt: new Date(parsed).toISOString(),
+  };
+}
+
 export function themeMessage(theme: Theme): {
   source: typeof messageSource;
   protocol: typeof protocolVersion;
@@ -220,7 +243,8 @@ export function parseHostMessage(data: unknown): HostMessage | null {
   if (
     message.type === "ready" ||
     message.type === "close-request" ||
-    message.type === "submitted"
+    message.type === "submitted" ||
+    message.type === "refresh-request"
   ) {
     return keys.length === 3 ? { kind: message.type } : null;
   }

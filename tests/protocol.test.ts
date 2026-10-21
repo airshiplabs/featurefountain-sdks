@@ -11,6 +11,7 @@ import {
   minFrameHeight,
   parseHostMessage,
   parseServiceOrigin,
+  sessionMessage,
   themeFromAttributes,
   themeMessage,
   unsupportedProtocol,
@@ -105,6 +106,51 @@ test("featurefountain rows in the shared protocol vectors", () => {
   ).toBeNull();
   expect(labelMax).toBe(60);
   expect(maxFrameHeight).toBe(4096);
+});
+
+test("session replies are posted to the endpoint origin", () => {
+  const source = readFileSync(
+    new URL("../src/index.ts", import.meta.url),
+    "utf8",
+  );
+  expect(source).toContain(
+    "this.frame.contentWindow.postMessage(message, this.config.origin)",
+  );
+  expect(source).not.toContain('postMessage(message, "*"');
+  expect(source).not.toContain("postMessage(message, '*'");
+});
+
+test("refresh-request uses exact keys and session replies with an ISO expiry", () => {
+  expect(
+    parseHostMessage({
+      source: "featurefountain",
+      protocol: 1,
+      type: "refresh-request",
+    }),
+  ).toEqual({ kind: "refresh-request" });
+  expect(
+    parseHostMessage({
+      source: "featurefountain",
+      protocol: 1,
+      type: "refresh-request",
+      extra: true,
+    }),
+  ).toBeNull();
+  const reply = sessionMessage("public-token", "2026-09-04T12:10:00Z");
+  expect(reply).toEqual({
+    source: "featurefountain",
+    protocol: 1,
+    type: "session",
+    token: "public-token",
+    expiresAt: "2026-09-04T12:10:00.000Z",
+  });
+  expect(Object.keys(reply)).toEqual([
+    "source",
+    "protocol",
+    "type",
+    "token",
+    "expiresAt",
+  ]);
 });
 
 test("parent vectors reject the wrong window and an opaque origin", () => {
