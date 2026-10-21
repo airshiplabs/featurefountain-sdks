@@ -56,7 +56,13 @@ function parent(name: string): ParentVector {
 }
 
 test("featurefountain rows in the shared protocol vectors", () => {
-  const formKinds = new Set(["ready", "resize", "close-request", "submitted"]);
+  const formKinds = new Set([
+    "ready",
+    "resize",
+    "close-request",
+    "submitted",
+    "refresh-request",
+  ]);
   const rows = vectors.messages.filter(
     (item) => item.product === "featurefountain",
   );
@@ -71,6 +77,12 @@ test("featurefountain rows in the shared protocol vectors", () => {
         kind: "resize",
         height: row.data.height,
       });
+    } else if (row.kind === "session") {
+      expect(parsed, row.name).toBeNull();
+      expect(
+        sessionMessage(String(row.data.token), String(row.data.expiresAt)),
+        row.name,
+      ).toEqual(row.data);
     } else if (row.kind && formKinds.has(row.kind)) {
       expect(parsed, row.name).toEqual({ kind: row.kind });
     } else {
@@ -104,6 +116,22 @@ test("featurefountain rows in the shared protocol vectors", () => {
       expiresAt: "2030-01-01T00:00:00.000Z",
     }),
   ).toBeNull();
+  expect(() =>
+    sessionMessage(
+      String(message("session empty token").data.token),
+      String(message("session empty token").data.expiresAt),
+    ),
+  ).toThrow(/invalid embed session/i);
+  expect(() =>
+    sessionMessage(
+      String(message("session bad expiresAt").data.token),
+      String(message("session bad expiresAt").data.expiresAt),
+    ),
+  ).toThrow(/invalid embed session/i);
+  expect(
+    parseHostMessage(message("refresh-request extra field").data),
+  ).toBeNull();
+  expect(parseHostMessage(message("session extra field").data)).toBeNull();
   expect(labelMax).toBe(60);
   expect(maxFrameHeight).toBe(4096);
 });
@@ -168,6 +196,24 @@ test("parent vectors reject the wrong window and an opaque origin", () => {
   expect(opaque.hidesClose).toBe(false);
   expect(
     isEmbedMessageSource(opaque.origin, frame, opaque.parentOrigin, frame),
+  ).toBe(false);
+  const session = parent("featurefountain session from parent");
+  expect(session.hidesClose).toBe(false);
+  expect(
+    sessionMessage(String(session.data.token), String(session.data.expiresAt)),
+  ).toEqual(session.data);
+  expect(
+    isEmbedMessageSource(session.origin, frame, session.parentOrigin, frame),
+  ).toBe(true);
+  const wrongSession = parent("session from wrong window");
+  expect(wrongSession.hidesClose).toBe(false);
+  expect(
+    isEmbedMessageSource(
+      wrongSession.origin,
+      otherWindow,
+      wrongSession.parentOrigin,
+      frame,
+    ),
   ).toBe(false);
   const handshake = parent("featurefountain handshake from parent");
   expect(handshake.hidesClose).toBe(true);

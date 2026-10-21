@@ -103,6 +103,24 @@
       "kind": "submitted"
     },
     {
+      "name": "featurefountain refresh-request",
+      "product": "featurefountain",
+      "data": { "source": "featurefountain", "protocol": 1, "type": "refresh-request" },
+      "kind": "refresh-request"
+    },
+    {
+      "name": "featurefountain session",
+      "product": "featurefountain",
+      "data": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "session",
+        "token": "renewed-admission-token",
+        "expiresAt": "2030-01-01T00:00:00.000Z"
+      },
+      "kind": "session"
+    },
+    {
       "name": "protocol 2",
       "product": "bugbeacon",
       "data": { "source": "bugbeacon", "protocol": 2, "type": "handshake", "embed": true },
@@ -241,6 +259,54 @@
       "kind": null
     },
     {
+      "name": "refresh-request extra field",
+      "product": "featurefountain",
+      "data": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "refresh-request",
+        "token": "nope"
+      },
+      "kind": null
+    },
+    {
+      "name": "session extra field",
+      "product": "featurefountain",
+      "data": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "session",
+        "token": "renewed-admission-token",
+        "expiresAt": "2030-01-01T00:00:00.000Z",
+        "extra": true
+      },
+      "kind": null
+    },
+    {
+      "name": "session bad expiresAt",
+      "product": "featurefountain",
+      "data": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "session",
+        "token": "renewed-admission-token",
+        "expiresAt": "invalid"
+      },
+      "kind": null
+    },
+    {
+      "name": "session empty token",
+      "product": "featurefountain",
+      "data": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "session",
+        "token": "",
+        "expiresAt": "2030-01-01T00:00:00.000Z"
+      },
+      "kind": null
+    },
+    {
       "name": "session is not protocol",
       "product": "featurefountain",
       "data": {
@@ -271,6 +337,38 @@
       "sourceIsParent": true,
       "framed": true,
       "hidesClose": true
+    },
+    {
+      "name": "featurefountain session from parent",
+      "product": "featurefountain",
+      "data": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "session",
+        "token": "renewed-admission-token",
+        "expiresAt": "2030-01-01T00:00:00.000Z"
+      },
+      "origin": "https://host.example",
+      "parentOrigin": "https://host.example",
+      "sourceIsParent": true,
+      "framed": true,
+      "hidesClose": false
+    },
+    {
+      "name": "session from wrong window",
+      "product": "featurefountain",
+      "data": {
+        "source": "featurefountain",
+        "protocol": 1,
+        "type": "session",
+        "token": "renewed-admission-token",
+        "expiresAt": "2030-01-01T00:00:00.000Z"
+      },
+      "origin": "https://host.example",
+      "parentOrigin": "https://host.example",
+      "sourceIsParent": false,
+      "framed": true,
+      "hidesClose": false
     },
     {
       "name": "wrong window",
