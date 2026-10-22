@@ -145,6 +145,8 @@ pnpm test:e2e
 
 The build outputs `dist/index.js`, `dist/index.d.ts`, and `dist/widget.js`. For a local host page, see `examples/index.html`.
 
+`pnpm install` installs a pre-commit hook that blocks staged files over 5,000 tokens (20,000 bytes, counted as bytes / 4). Split source, tests, and docs before committing. Lockfiles, generated files, and binaries are ignored; the list is in `scripts/check-file-token-limit.mjs`.
+
 ## License
 
 MIT
