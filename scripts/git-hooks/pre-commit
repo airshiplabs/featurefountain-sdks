@@ -1,0 +1,6 @@
+#!/bin/sh
+# featurefountain:file-token-limit
+# Blocks staged files over 5,000 tokens (bytes / 4, so over 20,000 bytes).
+repo=$(git rev-parse --show-toplevel) || exit 1
+cd "$repo" || exit 1
+exec node scripts/check-file-token-limit.mjs

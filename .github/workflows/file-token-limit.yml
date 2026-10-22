@@ -1,0 +1,37 @@
+name: File token limit
+
+# CI enforcement for the pre-commit hook, which agents can skip with
+# --no-verify, by committing before install, or by committing through the
+# GitHub API. Runs the same script and ignore list as the hook against the
+# files this PR adds or modifies, compared with the base branch.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: file-token-limit-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  file-token-limit:
+    name: file-token-limit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Check files changed in this PR
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          # Stage the PR's added and modified files against the merge base,
+          # so the hook script checks exactly what this PR changes.
+          base="$(git merge-base "origin/$BASE_REF" HEAD)"
+          git reset --soft "$base"
+          node scripts/check-file-token-limit.mjs
