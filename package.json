@@ -1,7 +1,7 @@
 {
   "name": "@featurefountain/browser",
   "version": "0.2.0",
-  "description": "Public browser component for FeatureFountain",
+  "description": "Public browser component for Feature Fountain",
   "homepage": "https://featurefountain.ai",
   "bugs": {
     "url": "https://github.com/airshiplabs/featurefountain-sdks/issues"

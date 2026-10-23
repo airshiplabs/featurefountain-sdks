@@ -330,7 +330,7 @@ class FeatureFountain extends HTMLElement {
     if (this.seenProtocols.has(version)) return;
     this.seenProtocols.add(version);
     console.debug(
-      `FeatureFountain ignored embed protocol ${version}; this SDK speaks protocol ${protocolVersion}.`,
+      `Feature Fountain ignored embed protocol ${version}; this SDK speaks protocol ${protocolVersion}.`,
     );
   }
 
@@ -398,7 +398,7 @@ class FeatureFountain extends HTMLElement {
       const detail =
         error instanceof Error ? error.message : "Session request failed.";
       console.error(
-        `FeatureFountain could not renew the embed session: ${detail}`,
+        `Feature Fountain could not renew the embed session: ${detail}`,
       );
     } finally {
       clearTimeout(requestTimeout);

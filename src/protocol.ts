@@ -221,7 +221,7 @@ export function isEmbedMessageSource(
 }
 
 /**
- * Integer protocol number on a FeatureFountain message that this SDK does not speak.
+ * Integer protocol number on a Feature Fountain message that this SDK does not speak.
  * Protocol 1 and unrelated objects return null. Callers ignore the message.
  */
 export function unsupportedProtocol(data: unknown): number | null {
