@@ -1,4 +1,4 @@
-# Install FeatureFountain in a host app
+# Install Feature Fountain in a host app
 
 This guide is for coding agents integrating the browser widget. The custom element tag is **`feature-fountain`**. The npm package is **`@featurefountain/browser`**.
 
@@ -169,7 +169,7 @@ The element supports **only** these HTML attributes (see `src/index.ts` in this 
 | Attribute      | Required | Description                                                                                      |
 | -------------- | -------- | ------------------------------------------------------------------------------------------------ |
 | `project-id`   | Yes      | Public project UUID. Must match RFC 4122 form (version nibble `1`–`8`, variant `8`/`9`/`a`/`b`). |
-| `api-base`     | No       | FeatureFountain service origin. Default: `https://featurefountain.ai`.                           |
+| `api-base`     | No       | Feature Fountain service origin. Default: `https://featurefountain.ai`.                          |
 | `label`        | No       | Trigger text. Default `Request Feature`. 1–60 characters.                                        |
 | `heading`      | No       | Dialog title. Default `Request a feature`.                                                       |
 | `close-label`  | No       | The SDK Close button. Default `Close`. The dialog has one Close control.                         |
@@ -181,7 +181,7 @@ The element supports **only** these HTML attributes (see `src/index.ts` in this 
 
 - Must be a bare origin URL (`https://host` or `http://host`), with optional trailing slash only. No path, query, fragment, userinfo, or wildcards.
 - Production hosts must use **HTTPS**.
-- **HTTP** is allowed only on loopback: `localhost`, `127.x.x.x`, or `[::1]` (for local FeatureFountain dev).
+- **HTTP** is allowed only on loopback: `localhost`, `127.x.x.x`, or `[::1]` (for local Feature Fountain dev).
 - Invalid `project-id` or `api-base` disables the button and shows a configuration alert in the page.
 
 Never put GitHub tokens, private project identifiers, or service secrets in the host page. Session creation uses:
@@ -225,12 +225,12 @@ If the host sends CSP headers, allow at minimum:
 
 `connect-src` must allow `POST` to `/api/v1/projects/{uuid}/embed-sessions`. `frame-src` must allow the embed path on the same origin.
 
-## 7. Human-only setup (FeatureFountain dashboard)
+## 7. Human-only setup (Feature Fountain dashboard)
 
 A developer with GitHub access must complete these steps once per app. An agent cannot do them without that human.
 
 1. Sign in with GitHub at [featurefountain.ai](https://featurefountain.ai) using an account that can edit the target GitHub Project.
-2. Register the application in FeatureFountain.
+2. Register the application in Feature Fountain.
 3. Add **allowed origins** for every host URL that will embed the widget, including local dev (for example `http://127.0.0.1:3000` and `http://localhost:3000` if both are used). Origins must match exactly; `localhost` and `127.0.0.1` are different origins.
 4. Choose the private **GitHub Project** destination for submissions.
 5. Enable submissions for the project.
@@ -240,7 +240,7 @@ End users of the host app do not need GitHub accounts.
 
 ## 8. Verify the integration
 
-1. Build or serve the host app from an origin listed in FeatureFountain allowed origins.
+1. Build or serve the host app from an origin listed in Feature Fountain allowed origins.
 2. Open the page, click **Request Feature**, and submit a short test request in the dialog.
 3. In the connected GitHub Project, confirm a new **draft** item appears.
 
@@ -251,14 +251,14 @@ If the button is disabled with a configuration alert, fix `project-id` and `api-
 | Symptom                                                  | Likely cause                                          | What to do                                                                                    |
 | -------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | Configuration alert; button disabled                     | Invalid UUID or malformed `api-base`                  | Use dashboard UUID; set `api-base` to `https://featurefountain.ai` or valid loopback HTTP URL |
-| `POST .../embed-sessions` fails (4xx) from browser       | Host origin not in allowed origins                    | Add the exact browser origin (scheme + host + port) in FeatureFountain settings               |
-| Session fails; generic load error                        | Submissions disabled, wrong project, or service error | Confirm submissions enabled; retry; check FeatureFountain project status                      |
+| `POST .../embed-sessions` fails (4xx) from browser       | Host origin not in allowed origins                    | Add the exact browser origin (scheme + host + port) in Feature Fountain settings              |
+| Session fails; generic load error                        | Submissions disabled, wrong project, or service error | Confirm submissions enabled; retry; check Feature Fountain project status                     |
 | Works on `localhost` but not `127.0.0.1` (or vice versa) | Only one origin allowed                               | Add both origins if both are used                                                             |
 | Widget missing in SSR HTML                               | Imported on server                                    | Move import to client-only path (`useEffect`, dynamic `ssr: false`, etc.)                     |
 | CSP console errors                                       | Missing `script-src`, `connect-src`, or `frame-src`   | Add directives in section 6                                                                   |
 | Form times out after ~10s                                | Network block or embed never signals ready            | Check firewall, CSP, and ad blockers; use **Try again**                                       |
 
-Local FeatureFountain service: set `api-base` to the loopback service URL (for example `http://127.0.0.1:3000`) and allow that dev host origin in project settings. See `examples/index.html` in this repository.
+Local Feature Fountain service: set `api-base` to the loopback service URL (for example `http://127.0.0.1:3000`) and allow that dev host origin in project settings. See `examples/index.html` in this repository.
 
 ## 10. Reference
 

@@ -1,4 +1,4 @@
-# FeatureFountain
+# Feature Fountain
 
 Put a feature-request button on your site; submissions land in your GitHub Project (Projects v2) as draft items.
 
@@ -7,7 +7,7 @@ Put a feature-request button on your site; submissions land in your GitHub Proje
 Paste this into your coding agent:
 
 ```text
-Install FeatureFountain by following https://github.com/airshiplabs/featurefountain-sdks/blob/main/INSTALL.md
+Install Feature Fountain by following https://github.com/airshiplabs/featurefountain-sdks/blob/main/INSTALL.md
 ```
 
 <!-- PLACEHOLDER: Add a screenshot or GIF here when a repo asset exists. -->
@@ -18,7 +18,7 @@ You need a GitHub Project you can edit. Your users do not need GitHub accounts.
 
 ## Theming
 
-Set these optional attributes on `<feature-fountain>`. Defaults match FeatureFountain branding. The widget sends them to the hosted form after the form reports ready. It does not check your plan. The server decides which theme values to apply.
+Set these optional attributes on `<feature-fountain>`. Defaults match Feature Fountain branding. The widget sends them to the hosted form after the form reports ready. It does not check your plan. The server decides which theme values to apply.
 
 | Attribute      | Default             | What it changes                                     |
 | -------------- | ------------------- | --------------------------------------------------- |
