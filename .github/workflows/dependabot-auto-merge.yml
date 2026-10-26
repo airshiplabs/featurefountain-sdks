@@ -1,0 +1,46 @@
+# Enables GitHub auto-merge for every Dependabot pull request. The base
+# branch's copy of this file runs, so a pull request cannot change its own
+# gate. This job does not check out or run pull request code.
+#
+# No update-type filter: major, minor, and patch, production and development
+# dependencies, and GitHub Actions all qualify. The merge still waits until
+# required checks pass.
+#
+# Squash is the only method the Protect main ruleset allows.
+name: Dependabot auto-merge
+
+on:
+  pull_request_target:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Dependabot metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh pr merge --auto --squash "$PR_URL"; then
+            exit 0
+          fi
+          # A later push retries this job after auto-merge is already on.
+          method=$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest.mergeMethod // ""')
+          if [ "$method" = "SQUASH" ]; then
+            echo "Auto-merge is already enabled with squash."
+            exit 0
+          fi
+          echo "gh pr merge --auto --squash failed, and squash auto-merge is not enabled." >&2
+          exit 1
