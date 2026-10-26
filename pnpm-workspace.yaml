@@ -2,3 +2,7 @@ minimumReleaseAgeExclude:
   - "@playwright/test@1.63.0"
   - playwright-core@1.63.0
   - playwright@1.63.0
+
+overrides:
+  source-map-js: 1.2.2
+  vite: 8.2.4
