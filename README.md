@@ -1,6 +1,6 @@
 # Feature Fountain
 
-Put a feature-request button on your site; submissions land in your GitHub Project (Projects v2) as draft items.
+Feature Fountain helps small software teams collect and prioritize feature requests from their users. This browser SDK adds an accessible feature request button to any web app, so users can share ideas without leaving your product. Learn more at https://featurefountain.ai.
 
 ## Install
 

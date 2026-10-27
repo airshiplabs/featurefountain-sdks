@@ -1,7 +1,20 @@
 {
   "name": "@featurefountain/browser",
-  "version": "0.2.0",
-  "description": "Public browser component for Feature Fountain",
+  "version": "0.2.1",
+  "description": "Browser SDK for Feature Fountain: add an accessible feature request button to any web app so users can share ideas and feedback.",
+  "keywords": [
+    "feature-request",
+    "feature-requests",
+    "feedback",
+    "user-feedback",
+    "feedback-widget",
+    "feedback-button",
+    "product-feedback",
+    "roadmap",
+    "widget",
+    "browser",
+    "feature-fountain"
+  ],
   "homepage": "https://featurefountain.ai",
   "bugs": {
     "url": "https://github.com/airshiplabs/featurefountain-sdks/issues"
@@ -9,7 +22,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/airshiplabs/featurefountain-sdks.git"
+    "url": "git+https://github.com/airshiplabs/featurefountain-sdks.git",
+    "directory": "."
   },
   "files": [
     "dist",
