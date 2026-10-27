@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-27
+
+### Changed
+
+- npm description, keywords, homepage, repository, and bugs for `@featurefountain/browser`.
+- README introduction for the browser SDK.
+- Documentation and browser console messages use the two-word name Feature Fountain.
+
 ## [0.2.0] - 2026-10-21
 
 ### Added
