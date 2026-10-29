@@ -1,6 +1,7 @@
-# Posts `QA checks` = success on a PR's head SHA only when the PR targets the
+# Posts `qa/tessa` = success on a PR's head SHA only when the PR targets the
 # default branch and every changed file is docs, per brain decision 0005
-# (amended 2026-10-03, approved by Matthew). Otherwise normal QA (Tessa) applies.
+# (amended 2026-10-03; context renamed from `QA checks` to `qa/tessa` and made
+# required by Matthew, 2026-10-29). Otherwise normal QA (Tessa) applies.
 #
 # Security design:
 # - pull_request_target runs the BASE branch's copy of this file, so a PR can't
@@ -14,14 +15,14 @@
 # - Statuses are per SHA, not per PR or base. So the job also runs on `edited`
 #   (fired on a base change) and only exempts PRs whose base is the default branch.
 # - Fail-closed by construction ("revoke first"): before any other read, if the
-#   latest `QA checks` on the head SHA is this workflow's own docs-only pass, it
+#   latest `qa/tessa` on the head SHA is this workflow's own docs-only pass, it
 #   is replaced with `pending`. Success is re-posted only at the very end, after
 #   every check passes. Any error, skip or early exit leaves it pending. It never
 #   overwrites a status anyone else posted.
 # - Accepted residual risk: if the first statuses read or the `pending` POST
 #   fails twice (needs a GitHub API outage), the job exits non-zero (red) and an
 #   earlier pass of ours could remain on the SHA.
-# - Do not name a job "QA checks" (decision 0005).
+# - Do not name a job "qa/tessa" (decision 0005).
 name: docs-only-qa
 
 on:
@@ -43,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Re-verify and post the docs-only QA checks exemption
+      - name: Re-verify and post the docs-only qa/tessa exemption
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -87,18 +88,18 @@ jobs:
           # Not exempt: our pass (if any) is already pending. Post nothing more.
           skip() { echo "Not exempt: $1. Posting nothing; normal QA applies."; exit 0; }
           # Can't verify: stay pending and make the run visibly red.
-          fail() { echo "::error::$1. QA checks stays as it is (ours is pending)."; exit 1; }
+          fail() { echo "::error::$1. qa/tessa stays as it is (ours is pending)."; exit 1; }
 
           # 1. Revoke first: replace our own docs-only pass with pending before
           #    anything else, so every later exit leaves it pending.
           latest=$(retry gh api --paginate "repos/$REPO/commits/$EVENT_SHA/statuses?per_page=100" \
-            --jq '.[] | select(.context == "QA checks") | [.creator.login // "", .description // ""] | @tsv') \
+            --jq '.[] | select(.context == "qa/tessa") | [.creator.login // "", .description // ""] | @tsv') \
             || { echo "::error::Could not read statuses on $EVENT_SHA (residual risk: an earlier pass may remain)."; exit 1; }
           latest=${latest%%$'\n'*} # newest first: first line is the latest
           if [ "$latest" = "github-actions[bot]"$'\t'"$DOCS_DESC" ]; then
             retry gh api -X POST "repos/$REPO/statuses/$EVENT_SHA" \
               -f state=pending \
-              -f context="QA checks" \
+              -f context="qa/tessa" \
               -f description="$REVERIFY_DESC" \
               -f target_url="$RUN_URL" \
               --silent \
@@ -154,9 +155,9 @@ jobs:
           # 4. Everything verified: (re-)post success.
           retry gh api -X POST "repos/$REPO/statuses/$EVENT_SHA" \
             -f state=success \
-            -f context="QA checks" \
+            -f context="qa/tessa" \
             -f description="$DOCS_DESC" \
             -f target_url="$RUN_URL" \
             --silent \
-            || fail "Could not post QA checks success"
-          echo "Posted QA checks success on $EVENT_SHA."
+            || fail "Could not post qa/tessa success"
+          echo "Posted qa/tessa success on $EVENT_SHA."

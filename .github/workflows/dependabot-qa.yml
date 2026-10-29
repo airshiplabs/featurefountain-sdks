@@ -1,0 +1,108 @@
+# Posts `qa/tessa` = success on a Dependabot PR's head SHA, per brain decision
+# 0005 (Matthew, 2026-10-29: qa/tessa is required except on Dependabot and
+# docs-only PRs). Every other PR still needs Tessa's own qa/tessa.
+#
+# Security design:
+# - pull_request_target runs the BASE branch's copy of this file, so a PR can't
+#   edit this workflow to forge a pass.
+# - Never checks out or runs PR code. It only reads the PR and its commits via the API.
+# - Workflow permissions are contents: read. The job adds pull-requests: read
+#   and statuses: write.
+# - Exempt only when the PR was opened by dependabot[bot], targets the default
+#   branch, is not a draft, and EVERY commit on it is authored and committed by
+#   dependabot[bot] with a verified signature. A human push onto a Dependabot
+#   branch ends the exemption, and normal QA (Tessa) applies.
+# - Fail-closed ("revoke first"): before any other read, if the latest
+#   `qa/tessa` on the head SHA is this workflow's own pass, it is replaced with
+#   `pending`. Success is re-posted only after every check passes. It never
+#   overwrites a status anyone else posted.
+# - Accepted residual risk (decision 0005): GitHub can't pin a required status
+#   to a user, so any workflow with statuses: write could post `qa/tessa`.
+#   Workflow changes stay Matthew review.
+name: dependabot-qa
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-qa-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  dependabot-qa:
+    name: dependabot-qa
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
+    steps:
+      - name: Re-verify and post the Dependabot qa/tessa exemption
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          EVENT_SHA: ${{ github.event.pull_request.head.sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          CONTEXT="qa/tessa"
+          DESC="Dependabot PR: QA exempt (brain decision 0005)"
+          REVERIFY_DESC="Re-verifying Dependabot exemption"
+          RUN_URL="${GITHUB_SERVER_URL:-https://github.com}/$REPO/actions/runs/${GITHUB_RUN_ID:-0}"
+
+          retry() {
+            local out
+            if out=$("$@"); then printf '%s\n' "$out"; return 0; fi
+            sleep 5
+            if out=$("$@"); then printf '%s\n' "$out"; return 0; fi
+            return 1
+          }
+          skip() { echo "Not exempt: $1. Posting nothing; normal QA applies."; exit 0; }
+          fail() { echo "::error::$1. $CONTEXT stays as it is (ours is pending)."; exit 1; }
+
+          # 1. Revoke first.
+          latest=$(retry gh api --paginate "repos/$REPO/commits/$EVENT_SHA/statuses?per_page=100" \
+            --jq ".[] | select(.context == \"$CONTEXT\") | [.creator.login // \"\", .description // \"\"] | @tsv") \
+            || { echo "::error::Could not read statuses on $EVENT_SHA (residual risk: an earlier pass may remain)."; exit 1; }
+          latest=${latest%%$'\n'*}
+          if [ "$latest" = "github-actions[bot]"$'\t'"$DESC" ]; then
+            retry gh api -X POST "repos/$REPO/statuses/$EVENT_SHA" \
+              -f state=pending -f context="$CONTEXT" -f description="$REVERIFY_DESC" \
+              -f target_url="$RUN_URL" --silent \
+              || { echo "::error::Could not revoke our pass on $EVENT_SHA (residual risk: it may remain)."; exit 1; }
+            echo "Set our earlier pass on $EVENT_SHA to pending while re-verifying."
+          fi
+
+          # 2. Verify the PR.
+          pr_json=$(retry gh api "repos/$REPO/pulls/$PR") || fail "Could not read PR #$PR"
+          head=$(jq -r .head.sha <<<"$pr_json")
+          [ "$head" = "$EVENT_SHA" ] || { echo "Head moved to $head; the newer run decides."; exit 0; }
+          [ "$(jq -r .user.login <<<"$pr_json")" = "dependabot[bot]" ] || skip "PR not opened by dependabot[bot]"
+          [ "$(jq -r .draft <<<"$pr_json")" = "false" ] || skip "draft PR"
+          [ "$(jq -r .base.ref <<<"$pr_json")" = "$DEFAULT_BRANCH" ] || skip "base is not the default branch"
+
+          # 3. Every commit must be Dependabot's own, signed and verified.
+          others=$(retry gh api --paginate "repos/$REPO/pulls/$PR/commits?per_page=100" \
+            --jq '.[] | select((.author.login // "") != "dependabot[bot]"
+                            or (.committer.login // "") != "web-flow" and (.committer.login // "") != "dependabot[bot]"
+                            or (.commit.verification.verified | not)) | .sha') \
+            || fail "Could not list commits on PR #$PR"
+          [ -z "$others" ] || skip "commits not authored by dependabot[bot] or unverified: $(tr '\n' ' ' <<<"$others")"
+
+          # 4. Re-fetch right before posting.
+          [ "$(retry gh api "repos/$REPO/pulls/$PR" --jq .head.sha)" = "$EVENT_SHA" ] \
+            || { echo "Head changed during the check; the newer run decides."; exit 0; }
+
+          retry gh api -X POST "repos/$REPO/statuses/$EVENT_SHA" \
+            -f state=success -f context="$CONTEXT" -f description="$DESC" \
+            -f target_url="$RUN_URL" --silent \
+            || fail "Could not post $CONTEXT success"
+          echo "Posted $CONTEXT success on $EVENT_SHA."
