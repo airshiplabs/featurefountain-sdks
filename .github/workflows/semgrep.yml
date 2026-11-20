@@ -37,16 +37,20 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
+        # This image runs steps with sh, which has no arrays.
         run: |
-          args=(scan --metrics=off --disable-version-check \
+          set -eu
+          set -- scan --metrics=off --disable-version-check \
             --config p/default \
             --config p/typescript \
             --config p/javascript \
             --config p/secrets \
             --config p/github-actions \
-            --sarif --output semgrep.sarif)
-          [ "$EVENT" = "pull_request" ] && args+=(--baseline-commit "$PR_BASE")
-          semgrep "${args[@]}"
+            --sarif --output semgrep.sarif
+          if [ "$EVENT" = "pull_request" ]; then
+            set -- "$@" --baseline-commit "$PR_BASE"
+          fi
+          semgrep "$@"
 
       - name: Upload SARIF to code scanning
         if: >-
