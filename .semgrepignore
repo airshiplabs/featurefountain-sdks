@@ -1,0 +1,17 @@
+# Replaces Semgrep's default ignore list, so the defaults are repeated here.
+node_modules/
+dist/
+build/
+out/
+.next/
+coverage/
+playwright-report/
+test-results/
+.turbo/
+.vercel/
+*.min.js
+*.map
+pnpm-lock.yaml
+package-lock.json
+bun.lock
+tests/fixtures/
