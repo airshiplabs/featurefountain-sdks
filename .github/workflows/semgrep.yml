@@ -33,6 +33,7 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Semgrep CE scan (report-only until 2026-12-04)
+        id: semgrep
         continue-on-error: true # Phase 1. Remove in Phase 2.
         env:
           EVENT: ${{ github.event_name }}
@@ -51,6 +52,11 @@ jobs:
             set -- "$@" --baseline-commit "$PR_BASE"
           fi
           semgrep "$@"
+
+      # continue-on-error hides a crash. A missing or empty report fails the job.
+      - name: Require a non-empty Semgrep SARIF report
+        if: always() && (steps.semgrep.outcome == 'success' || steps.semgrep.outcome == 'failure')
+        run: test -s semgrep.sarif
 
       - name: Upload SARIF to code scanning
         if: >-
