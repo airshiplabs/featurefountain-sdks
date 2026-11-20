@@ -1,0 +1,69 @@
+name: semgrep
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 9 * * 1" # Mondays 09:41 UTC: full scan
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: semgrep-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    container:
+      image: semgrep/semgrep:1.186.0@sha256:6e1b04340e60e910fbb4ddbf3c857ab0918f064417ad5ac530014ccb3cf8c8f1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Trust workspace for git (container user differs)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Semgrep CE scan (report-only until 2026-12-04)
+        id: semgrep
+        continue-on-error: true # Phase 1. Remove in Phase 2.
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        # This image runs steps with sh, which has no arrays.
+        run: |
+          set -eu
+          set -- scan --metrics=off --disable-version-check \
+            --config p/default \
+            --config p/typescript \
+            --config p/javascript \
+            --config p/secrets \
+            --config p/github-actions \
+            --sarif --output semgrep.sarif
+          if [ "$EVENT" = "pull_request" ]; then
+            set -- "$@" --baseline-commit "$PR_BASE"
+          fi
+          semgrep "$@"
+
+      # continue-on-error hides a crash. A missing or empty report fails the job.
+      - name: Require a non-empty Semgrep SARIF report
+        if: always() && (steps.semgrep.outcome == 'success' || steps.semgrep.outcome == 'failure')
+        run: test -s semgrep.sarif
+
+      - name: Upload SARIF to code scanning
+        if: >-
+          always() && hashFiles('semgrep.sarif') != '' &&
+          github.actor != 'dependabot[bot]' &&
+          (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep

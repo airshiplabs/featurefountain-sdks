@@ -1,0 +1,9 @@
+title = "featurefountain-sdks gitleaks config"
+
+[extend]
+useDefault = true
+
+# Add narrow allowlists ONLY for verified-fake test values. Example:
+# [[allowlists]]
+# description = "Fake credentials in unit-test fixtures (verified not real)"
+# paths = ['''^tests/unit/stripe-[a-z-]+\\.test\\.ts$''']

@@ -44,6 +44,11 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "America/Denver"
+    # Version updates only; security updates are never delayed by cooldown.
+    # 7 days meets the Semgrep dependabot-missing-cooldown minimum.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
     groups:
       actions:
         patterns:
